@@ -15,14 +15,27 @@ START_MENU_LINK = Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start
 PROJECT_LINK = config.ROOT / f"{APP_NAME}.lnk"
 
 
+LAUNCHER = config.ROOT / "FatimaImageStudio.exe"  # installed copies start through this
+
+
 def pythonw() -> str:
     exe = Path(sys.executable)
     candidate = exe.with_name("pythonw.exe")
     return str(candidate if candidate.exists() else exe)
 
 
+def launch_command(app_args: str) -> tuple[str, str]:
+    """What a shortcut runs: the launcher when installed, else pythonw -m studio."""
+    if config.INSTALLED and LAUNCHER.exists():
+        return str(LAUNCHER), app_args
+    return pythonw(), f"-m studio {app_args}"
+
+
 def python_console() -> str:
     """python.exe (not pythonw): stdio MCP needs a console-mode interpreter."""
+    bundled = config.ROOT / "python" / "python.exe"
+    if config.INSTALLED and bundled.exists():
+        return str(bundled)
     exe = Path(sys.executable)
     candidate = exe.with_name("python.exe")
     return str(candidate if candidate.exists() else exe)
@@ -50,13 +63,14 @@ def ensure_icon() -> Path:
     return ICON
 
 
-def make_shortcut(link: Path, args: str) -> None:
+def make_shortcut(link: Path, app_args: str) -> None:
+    target, args = launch_command(app_args)
     link.parent.mkdir(parents=True, exist_ok=True)
     ps = ("$s=(New-Object -ComObject WScript.Shell).CreateShortcut($env:LNK);"
           "$s.TargetPath=$env:TARGET;$s.Arguments=$env:ARGS;$s.WorkingDirectory=$env:WD;"
           "$s.IconLocation=$env:ICO;$s.Description='Bulk image generation on this PC';$s.Save()")
-    env = os.environ | {"LNK": str(link), "TARGET": pythonw(), "ARGS": args, "WD": str(config.ROOT),
-                        "ICO": str(ensure_icon())}
+    env = os.environ | {"LNK": str(link), "TARGET": target, "ARGS": args, "WD": str(config.ROOT),
+                        "ICO": target if target == str(LAUNCHER) else str(ensure_icon())}
     subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], env=env, check=True,
                    capture_output=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
@@ -71,13 +85,13 @@ def migrate_legacy() -> None:
                      (config.ROOT / f"{LEGACY_NAME}.lnk", PROJECT_LINK)):
         if old.exists() and not config.INSTALLED:
             old.unlink()
-            make_shortcut(new, "-m studio --tray")
+            make_shortcut(new, "--tray")
 
 
 def install_launchers() -> None:
     """Start menu entry and a launcher in the project folder; both open the tray app."""
     for link in (START_MENU_LINK, PROJECT_LINK):
-        make_shortcut(link, "-m studio --tray")
+        make_shortcut(link, "--tray")
 
 
 def enabled() -> bool:
@@ -86,6 +100,6 @@ def enabled() -> bool:
 
 def set_enabled(on: bool) -> None:
     if on:
-        make_shortcut(STARTUP_LINK, "-m studio --tray --no-browser")
+        make_shortcut(STARTUP_LINK, "--tray --no-browser")
     else:
         STARTUP_LINK.unlink(missing_ok=True)

@@ -1,11 +1,11 @@
 ; Inno Setup 6 script for Fatima Image Studio. Built by packaging\build.ps1, which passes
-; AppVersion, SourceDir (the staged app + embeddable Python) and OutputDir.
+; AppVersion, SourceDir (the staged app + embeddable Python), IconFile and OutputDir.
 ;
 ; Per-user install, no admin prompt. The app keeps models, engine and settings in
 ; %LOCALAPPDATA%\Fatima Image Studio and images in Pictures\Fatima Image Studio, so updates never touch them.
 
 #define AppName "Fatima Image Studio"
-#define AppExeArgs "-m studio --tray"
+#define AppExe "FatimaImageStudio.exe"
 #define RepoUrl "https://github.com/hassanxs/fatima-image-studio"
 
 [Setup]
@@ -26,8 +26,8 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 LicenseFile={#SourceDir}\LICENSE
-SetupIconFile={#SourceDir}\app.ico
-UninstallDisplayIcon={app}\app.ico
+SetupIconFile={#IconFile}
+UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
 OutputDir={#OutputDir}
 OutputBaseFilename=FatimaImageStudio-Setup-{#AppVersion}
@@ -44,18 +44,19 @@ Name: "startup"; Description: "Start with Windows (runs quietly in the tray)"; G
 ; Replace the code and runtime wholesale on update, so files removed upstream don't linger.
 Type: filesandordirs; Name: "{app}\studio"
 Type: filesandordirs; Name: "{app}\python"
+Type: files; Name: "{app}\app.ico"
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{userprograms}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "{#AppExeArgs}"; WorkingDir: "{app}"; IconFilename: "{app}\app.ico"; Comment: "Bulk image generation on this PC"
-Name: "{userdesktop}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "{#AppExeArgs}"; WorkingDir: "{app}"; IconFilename: "{app}\app.ico"; Tasks: desktopicon
+Name: "{userprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Comment: "Bulk image generation on this PC"
+Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Tasks: desktopicon
 ; Same name and arguments the app's own "Start with Windows" switch uses, so the two stay in sync.
-Name: "{userstartup}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "{#AppExeArgs} --no-browser"; WorkingDir: "{app}"; IconFilename: "{app}\app.ico"; Tasks: startup
+Name: "{userstartup}\{#AppName}"; Filename: "{app}\{#AppExe}"; Parameters: "--tray --no-browser"; WorkingDir: "{app}"; Tasks: startup
 
 [Run]
-Filename: "{app}\python\pythonw.exe"; Parameters: "{#AppExeArgs}"; WorkingDir: "{app}"; Description: "Open {#AppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Description: "Open {#AppName}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: files; Name: "{userstartup}\{#AppName}.lnk"
@@ -66,21 +67,22 @@ Type: filesandordirs; Name: "{app}\python"
 const
   DataDir = '{localappdata}\Fatima Image Studio';
 
-{ Stop a running copy (its Python lives in the install folder) so its files can be replaced. }
+{ Stop a running copy (FatimaImageStudio.exe, or the bundled Python in 1.0.0) so its files can be replaced. }
 procedure StopRunningApp();
 var
   Code: Integer;
   Cmd: String;
 begin
   Cmd := '-NoProfile -NonInteractive -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like ''' +
-         ExpandConstant('{app}') + '\python\*'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"';
+         ExpandConstant('{app}') + '\python\*'' -or $_.ExecutablePath -like ''' +
+         ExpandConstant('{app}') + '\{#AppExe}'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"';
   Exec('powershell.exe', Cmd, '', SW_HIDE, ewWaitUntilTerminated, Code);
   Sleep(800);
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
-  if DirExists(ExpandConstant('{app}\python')) then
+  if DirExists(ExpandConstant('{app}')) then
     StopRunningApp();
   Result := '';
 end;

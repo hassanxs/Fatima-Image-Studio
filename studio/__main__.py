@@ -4,6 +4,10 @@
   pythonw -m studio --tray         background app with a tray icon (what the shortcuts run)
   --no-browser                     don't open the browser on start
   python -m studio --install       create the Start menu entry and the launcher in this folder
+  --check                          import everything and exit 0 (the installer build's smoke test)
+
+An installed copy starts through FatimaImageStudio.exe, which runs `python -m studio` with its arguments
+(just `--tray` when it has none).
 """
 import json
 import logging
@@ -28,6 +32,9 @@ def already_running(cfg: dict) -> bool:
 
 def main() -> None:
     args = set(sys.argv[1:])
+    if "--check" in args:
+        from . import tray, mcp_server  # noqa: F401  (app is already imported)
+        sys.exit(0)
     cfg = config.load()
     if "--install" in args:
         from . import autostart

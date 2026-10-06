@@ -58,13 +58,33 @@ foreach ($d in "pythonwin", "bin", "win32\Demos", "win32\test", "win32com\demos"
 }
 Get-ChildItem $site -Recurse -Include *.chm, *.pyi | Remove-Item -Force
 
-# 5. App icon for the installer and shortcuts.
-python -c "import sys; sys.path.insert(0, r'$Root'); from studio.autostart import icon_image; icon_image().save(r'$Stage\app.ico', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+# 5. FatimaImageStudio.exe: our launcher (icon + version info), compiled with the C# compiler in Windows.
+$icon = Join-Path $Build "app.ico"
+python -c "import sys; sys.path.insert(0, r'$Root'); from studio.autostart import icon_image; icon_image().save(r'$icon', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])"
 if ($LASTEXITCODE -ne 0) { throw "icon failed" }
+$numeric = ($Version -replace '[^0-9.]', '') + ".0"
+Set-Content "$Build\Version.cs" @"
+using System.Reflection;
+[assembly: AssemblyTitle("Fatima Image Studio")]
+[assembly: AssemblyProduct("Fatima Image Studio")]
+[assembly: AssemblyDescription("Fatima Image Studio")]
+[assembly: AssemblyCompany("Hassan")]
+[assembly: AssemblyCopyright("Copyright (c) 2026 Hassan. MIT License.")]
+[assembly: AssemblyVersion("$numeric")]
+[assembly: AssemblyFileVersion("$numeric")]
+[assembly: AssemblyInformationalVersion("$Version")]
+"@ -Encoding utf8
+$csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+& $csc /nologo /target:winexe /platform:x64 /optimize+ "/win32icon:$icon" "/out:$Stage\FatimaImageStudio.exe" `
+    "$Root\packaging\launcher\Launcher.cs" "$Build\Version.cs"
+if ($LASTEXITCODE -ne 0) { throw "launcher build failed" }
 
-# 6. Smoke test: the bundled Python can import the whole app.
+# 6. Smoke test: the bundled Python imports the whole app, and the launcher starts it.
 & "$Stage\python\python.exe" -c "import studio.app, studio.tray, studio.mcp_server, win32api; print('imports ok')"
 if ($LASTEXITCODE -ne 0) { throw "the bundled runtime can't import the app" }
+$check = Start-Process "$Stage\FatimaImageStudio.exe" -ArgumentList "--check" -Wait -PassThru
+if ($check.ExitCode -ne 0) { throw "FatimaImageStudio.exe --check failed ($($check.ExitCode))" }
+Write-Host "launcher ok"
 
 $size = (Get-ChildItem $Stage -Recurse -File | Measure-Object Length -Sum).Sum
 Write-Host ("Staged {0:N1} MB in {1}" -f ($size / 1MB), $Stage)
@@ -73,7 +93,7 @@ Write-Host ("Staged {0:N1} MB in {1}" -f ($size / 1MB), $Stage)
 $iscc = @("$env:ProgramFiles (x86)\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
           "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) { throw "Inno Setup 6 (ISCC.exe) not found" }
-& $iscc /Q "/DAppVersion=$Version" "/DSourceDir=$Stage" "/DOutputDir=$Dist" "$Root\packaging\installer.iss"
+& $iscc /Q "/DAppVersion=$Version" "/DSourceDir=$Stage" "/DOutputDir=$Dist" "/DIconFile=$icon" "$Root\packaging\installer.iss"
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 
 $exe = Join-Path $Dist "FatimaImageStudio-Setup-$Version.exe"

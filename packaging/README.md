@@ -3,7 +3,11 @@
 The installer ships the source files in this repo as they are, plus:
 
 - the official **embeddable Python** (pinned version and SHA-256 in `build.ps1`), and
-- the exact packages in **`requirements-lock.txt`**, installed as wheels.
+- the exact packages in **`requirements-lock.txt`**, installed as wheels, and
+- **`FatimaImageStudio.exe`**, a small launcher (`launcher/Launcher.cs`, compiled by the build with the C#
+  compiler built into Windows) that loads the bundled Python into its own process and runs `-m studio`. Windows
+  shows the app under its own name, icon and version, never as `pythonw.exe`. With no arguments it starts
+  the tray app; any arguments go to `python -m studio` (e.g. `--tray --no-browser`, `--check`).
 
 The engine (stable-diffusion.cpp), models and upscalers are not bundled. The app downloads them on its Setup
 and Models pages, which keeps the installer at about 20 MB.
