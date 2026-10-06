@@ -1,0 +1,27 @@
+# Large binaries — downloaded, not authored (see README: engine release + Hugging Face models)
+engine/
+models/
+
+# Your images and outputs
+batches/
+exports/
+poc/out/
+poc/*.log
+
+# Private / per-machine state: config.json holds the API key; also logs, presets, references, LoRA list
+data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Windows shortcut created by `python -m studio --install`
+*.lnk
+
+# Installer build output (packaging/build.ps1)
+build/
+dist/
+
+# Early proof of concept, kept locally only
+poc/

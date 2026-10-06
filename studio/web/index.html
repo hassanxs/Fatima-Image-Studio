@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fatima Image Studio</title>
+<link rel="icon" href="icons/aperture.svg">
+<link href="fonts.css" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<header class="appbar">
+  <a class="brand" href="#create">
+    <span class="mark"><img src="icons/aperture.svg" width="26" height="26" alt=""></span>
+    Fatima Image Studio
+  </a>
+  <nav class="nav" aria-label="Main">
+    <a href="#create" data-view="create"><img class="on" src="icons/nav-create-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-create-off.svg" width="16" height="16" alt="">Create</a>
+    <a href="#batches" data-view="batches"><img class="on" src="icons/nav-batches-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-batches-off.svg" width="16" height="16" alt="">Batches</a>
+    <a href="#models" data-view="models"><img class="on" src="icons/nav-models-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-models-off.svg" width="16" height="16" alt="">Models</a>
+    <a href="#setup" data-view="setup"><img class="on" src="icons/nav-setup-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-setup-off.svg" width="16" height="16" alt="">Setup</a>
+    <a href="#connect" data-view="connect"><img class="on" src="icons/nav-connect-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-connect-off.svg" width="16" height="16" alt="">Connect</a>
+    <a href="#settings" data-view="settings"><img class="on" src="icons/nav-settings-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-settings-off.svg" width="16" height="16" alt="">Settings</a>
+  </nav>
+  <div class="engine">
+    <div class="engine-state">
+      <div class="engine-line"><span class="state-dot" id="engine-dot"><img src="icons/dot-standby.svg" width="6" height="6" alt=""></span><span id="engine-text">Connecting…</span></div>
+      <div class="engine-sub" id="engine-sub"></div>
+    </div>
+    <button type="button" class="btn lime" id="engine-btn" hidden><img src="icons/power.svg" width="18" height="18" alt=""><span id="engine-btn-label">Load model</span></button>
+  </div>
+</header>
+
+<!-- ============ CREATE ============ -->
+<main class="page" id="view-create">
+  <div class="page-head">
+    <div>
+      <div class="title-row"><h1>Make something.</h1><span class="kicker">CREATE</span></div>
+      <p class="lede">A prompt, a reference, a whole run of possibilities. All on your machine.</p>
+    </div>
+    <div class="note"><img src="icons/hard-drive.svg" width="18" height="18" alt="">YOUR MACHINE. YOUR IMAGES.</div>
+  </div>
+
+  <div class="desk">
+    <section class="card composer" aria-labelledby="new-batch">
+      <div class="row between">
+        <h2 class="section-title" id="new-batch">New batch</h2>
+        <span class="chip dark"><img src="icons/dot-lime.svg" width="5" height="5" alt="">Draft</span>
+      </div>
+
+      <div class="field" style="gap:6px">
+        <label class="label" for="preset">Preset</label>
+        <div class="row" style="gap:8px">
+          <div class="select-wrap" style="flex:1;min-width:0">
+            <select class="select" id="preset"><option value="">No preset</option></select>
+            <img src="icons/chevron-down.svg" width="16" height="16" alt="">
+          </div>
+          <button type="button" class="btn" id="preset-save" style="height:44px">Save</button>
+          <button type="button" class="icon-btn" id="preset-delete" aria-label="Delete this preset" hidden style="width:44px;height:44px"><img src="icons/x.svg" width="13" height="13" alt=""></button>
+        </div>
+        <p class="help">Size, images, model, seed, upscale, style and reference image — saved together.</p>
+      </div>
+
+      <div class="field" style="gap:6px">
+        <label class="label" for="batch-name" style="margin-bottom:2px">Batch name</label>
+        <input class="input mono" id="batch-name" placeholder="Auto · date + first prompt" autocomplete="off" spellcheck="false">
+        <p class="help" id="name-help">Type to rename. Saved as a folder on disk.</p>
+      </div>
+
+      <hr class="divider">
+
+      <div class="row between">
+        <div class="modes" role="group" aria-label="Prompt input mode">
+          <button type="button" id="mode-list" aria-pressed="true">List</button>
+          <button type="button" id="mode-paste" aria-pressed="false">Paste text</button>
+          <button type="button" id="mode-template" aria-pressed="false">Template</button>
+        </div>
+        <button type="button" class="text-btn" id="import-btn" style="font-size:11px"><img src="icons/upload.svg" width="13" height="13" alt="">Import CSV / TXT</button>
+        <input type="file" id="import-file" accept=".csv,.txt,text/plain,text/csv" hidden>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <ol class="prompts" id="prompt-list"></ol>
+        <textarea class="paste" id="prompt-paste" hidden placeholder="One prompt per line" aria-label="Prompts, one per line"></textarea>
+        <div class="template" id="template-box" hidden>
+          <textarea class="paste" id="tpl-text" rows="3" aria-label="Prompt template" placeholder="The character {action} in {place}, {mood} lighting"></textarea>
+          <p class="help">Put <span class="mono">{words}</span> in braces — each one gets its own list of values below.</p>
+          <div id="tpl-vars"></div>
+          <div class="row between" style="flex-wrap:wrap">
+            <div class="modes" role="group" aria-label="How to combine the lists">
+              <button type="button" id="tpl-all" aria-pressed="true">Every combination</button>
+              <button type="button" id="tpl-zip" aria-pressed="false">Line by line</button>
+            </div>
+            <span class="micro" id="tpl-count" style="font-size:10px;font-weight:400"></span>
+          </div>
+          <ol class="tpl-preview" id="tpl-preview"></ol>
+          <button type="button" class="btn block" id="tpl-add" disabled>Add prompts to the list</button>
+        </div>
+        <div class="row between">
+          <button type="button" class="text-btn red" id="add-prompt">+ Add prompt</button>
+          <span class="micro" style="font-size:10px;font-weight:400" id="prompt-count">0 prompts</span>
+        </div>
+      </div>
+
+      <div class="field" style="gap:8px">
+        <div class="row between">
+          <label class="label" for="style">Style <span style="text-transform:none;font-weight:400">— optional</span></label>
+          <div class="modes" role="group" aria-label="Where the style goes">
+            <button type="button" id="style-before" aria-pressed="true">Before prompt</button>
+            <button type="button" id="style-after" aria-pressed="false">After</button>
+          </div>
+        </div>
+        <textarea class="paste" id="style" rows="2" style="min-height:64px;font-family:var(--sans);font-size:12px" placeholder="Flat 2D vector cartoon, thick black outlines, flat cel-shaded fills"></textarea>
+        <p class="help">Added to every prompt in the batch, so each prompt only needs to describe the scene.</p>
+      </div>
+
+      <div class="field" style="gap:8px">
+        <div class="row between">
+          <label class="label" for="lora-add">LoRA <span style="text-transform:none;font-weight:400">— optional</span></label>
+          <a class="text-btn red" href="#models" id="lora-manage" style="font-size:11px">Manage library</a>
+        </div>
+        <div class="lora-picks" id="lora-picks"></div>
+        <div class="select-wrap" id="lora-add-wrap">
+          <select class="select" id="lora-add"><option value="">+ Add a LoRA…</option></select>
+          <img src="icons/chevron-down.svg" width="16" height="16" alt="">
+        </div>
+        <p class="help" id="lora-help">Style or character add-ons for the chosen model, up to 3. Their trigger words go in front of every prompt.</p>
+      </div>
+
+      <div class="field" style="gap:8px">
+        <div class="row between"><span class="label">Pinned references <span style="text-transform:none;font-weight:400">— optional</span></span>
+          <span class="micro" style="font-size:10px;font-weight:400" id="pins-count">0 / 4</span></div>
+        <div class="pins" id="pins"></div>
+        <div class="dropzone" id="batch-ref" role="button" tabindex="0" aria-label="Add a pinned reference image">
+          <span><img src="icons/image-plus.svg" width="22" height="22" alt=""></span>
+          <span class="dz-text">
+            <strong id="batch-ref-title">Drop images or browse</strong>
+            <span>Up to 4, used by every prompt — e.g. your character plus a setting. A prompt's own reference is added on top.</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="pair">
+        <div class="field">
+          <label class="label" for="size">Size</label>
+          <div class="select-wrap">
+            <select class="select" id="size">
+              <option value="1024x1024">1024 × 1024</option>
+              <option value="768x768">768 × 768</option>
+              <option value="512x512">512 × 512</option>
+              <option value="1344x768">1344 × 768</option>
+              <option value="768x1344">768 × 1344</option>
+              <option value="1152x896">1152 × 896</option>
+              <option value="896x1152">896 × 1152</option>
+              <option value="1536x1024">1536 × 1024</option>
+              <option value="1024x1536">1024 × 1536</option>
+            </select>
+            <img src="icons/chevron-down.svg" width="16" height="16" alt="">
+          </div>
+        </div>
+        <div class="field">
+          <span class="label" id="per-prompt-label">Images / prompt</span>
+          <div class="stepper" role="group" aria-labelledby="per-prompt-label">
+            <button type="button" id="per-minus" aria-label="Fewer images per prompt"><img src="icons/minus.svg" width="14" height="14" alt=""></button>
+            <span id="per-prompt">1</span>
+            <button type="button" id="per-plus" aria-label="More images per prompt"><img src="icons/plus.svg" width="14" height="14" alt=""></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pair">
+        <div class="field">
+          <label class="label" for="model-select">Model</label>
+          <div class="select-wrap"><select class="select" id="model-select"></select><img src="icons/chevron-down.svg" width="16" height="16" alt=""></div>
+        </div>
+        <div class="field">
+          <label class="label" for="seed">Seed</label>
+          <input class="input mono" id="seed" placeholder="Random" inputmode="numeric" autocomplete="off">
+        </div>
+      </div>
+      <p class="help tiny">One seed for the whole batch. Leave blank for random.</p>
+
+      <div class="field">
+        <label class="label" for="upscale">Upscale</label>
+        <div class="select-wrap">
+          <select class="select" id="upscale"><option value="">Off — keep the generated size</option></select>
+          <img src="icons/chevron-down.svg" width="16" height="16" alt="">
+        </div>
+        <p class="help tiny">Each image is upscaled after the whole batch has been generated. The originals are kept; upscaled copies go in <span class="mono">upscaled\</span>.</p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button type="button" class="btn red block" id="start"><img src="icons/play.svg" width="18" height="18" alt=""><span id="start-label">Start batch</span></button>
+        <p class="help tiny" id="sum-eta" style="text-align:center"></p>
+      </div>
+    </section>
+
+    <section class="run" aria-label="Current batch">
+      <div id="focus"></div>
+      <div class="gallery-bar" id="gallery-bar" hidden>
+        <div class="gallery-head"><h2>The output</h2><span class="micro" id="gallery-count"></span></div>
+        <div class="gallery-actions">
+          <button type="button" class="text-btn red" id="open-folder">Open folder ↗</button>
+          <button type="button" class="view-toggle" id="view-grid" aria-pressed="true" aria-label="Grid view"><img src="icons/grid.svg" width="17" height="17" alt=""></button>
+          <button type="button" class="view-toggle" id="view-list" aria-pressed="false" aria-label="List view"><img src="icons/list.svg" width="17" height="17" alt=""></button>
+        </div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div class="gallery-foot" id="gallery-foot" hidden>
+        <span class="micro" id="showing"></span>
+        <button type="button" class="text-btn red" id="view-all">View all images →</button>
+      </div>
+      <div id="next"></div>
+    </section>
+  </div>
+</main>
+
+<!-- ============ BATCHES ============ -->
+<main class="page" id="view-batches" hidden>
+  <div class="page-head">
+    <div>
+      <div class="title-row"><h1>Your body of work.</h1><span class="kicker">BATCHES</span></div>
+      <p class="lede">Each batch is a folder on disk. Renaming here renames the folder.</p>
+    </div>
+    <span class="chip dark"><img src="icons/dot-lime.svg" width="5" height="5" alt=""><span id="batch-total">0 batches on disk</span></span>
+  </div>
+  <div class="archive-bar">
+    <div class="archive-view"><strong>All batches</strong><span class="micro" id="image-total"></span></div>
+    <div class="row" style="flex-wrap:wrap">
+      <label class="search">
+        <img src="icons/search.svg" width="17" height="17" alt="">
+        <span class="sr-only">Search batches</span>
+        <input id="search" placeholder="Search names and first prompts" autocomplete="off">
+      </label>
+      <button type="button" class="btn" id="sort"><img src="icons/sort.svg" width="18" height="18" alt=""><span id="sort-label">Newest first</span></button>
+    </div>
+  </div>
+  <div class="blist" id="blist"></div>
+  <div class="explain">
+    <span class="icon-box"><img src="icons/folder-check.svg" width="22" height="22" alt=""></span>
+    <div class="explain-text">
+      <strong>Nothing lost. Everything reproducible.</strong>
+      <p>Every batch folder holds its images, the reference images used (refs\) and a batch.json with each prompt, seed and setting — so any image can be reproduced exactly.</p>
+    </div>
+    <div class="tags"><span class="tag">PNG images</span><span class="tag">refs/</span><span class="tag">batch.json</span></div>
+  </div>
+</main>
+
+<!-- ============ MODELS (models + LoRAs) ============ -->
+<main class="page" id="view-models" hidden>
+  <div class="page-head">
+    <div>
+      <div class="title-row"><h1>Pick your models.</h1><span class="kicker">MODELS &amp; LORAS</span></div>
+      <p class="lede">The models that make the images, and LoRA add-ons that give them a style or a character.</p>
+    </div>
+    <div class="note"><img src="icons/hard-drive.svg" width="18" height="18" alt="">STORED ON THIS PC</div>
+  </div>
+  <section class="card models-panel first" aria-labelledby="models-h">
+    <div class="row between"><h2 class="panel-title" id="models-h">Models</h2><span class="micro">Downloaded from Hugging Face</span></div>
+    <p class="help" style="font-size:12px">Each model is a few GB. Text encoders and VAEs that models share are only downloaded once, and kept while any model uses them.</p>
+    <div id="model-list"></div>
+  </section>
+
+  <section class="card models-panel" aria-labelledby="ups-h">
+    <div class="row between"><h2 class="panel-title" id="ups-h">Upscalers</h2><span class="micro">Real-ESRGAN · BSD-3</span></div>
+    <p class="help" style="font-size:12px">Make finished images 2× or 4× bigger. Small downloads; get the ones you want.</p>
+    <div id="upscaler-list"></div>
+  </section>
+
+  <section class="card models-panel" id="lora-library" aria-labelledby="loras-h">
+    <div class="row between"><h2 class="panel-title" id="loras-h">LoRA library</h2><span class="micro">Style &amp; character add-ons</span></div>
+    <p class="help" style="font-size:12px;line-height:1.5">A LoRA is a small add-on file (usually 20–400 MB) that teaches a model a specific art style or character.
+      Each one only works with the base model it was trained for — that's detected from the file. FLUX.2 LoRAs are adjusted on import so every layer applies in this engine.</p>
+    <div class="lora-add">
+      <label class="sr-only" for="lora-url">Hugging Face link</label>
+      <input class="input" id="lora-url" placeholder="https://huggingface.co/owner/lora-name" autocomplete="off" spellcheck="false">
+      <button type="button" class="btn red" id="lora-find">Add from Hugging Face</button>
+      <button type="button" class="btn" id="lora-upload-btn">Upload .safetensors</button>
+      <input type="file" id="lora-file" accept=".safetensors" hidden>
+    </div>
+    <div id="lora-preview"></div>
+    <div id="lora-list"></div>
+  </section>
+</main>
+
+<!-- ============ SETUP (hardware, engine, model, speed test) ============ -->
+<main class="page" id="view-setup" hidden>
+  <div class="page-head">
+    <div>
+      <div class="title-row"><h1>Set up this PC.</h1><span class="kicker">SETUP</span></div>
+      <p class="lede">Checks your hardware, then picks the engine and model that run best on it.</p>
+    </div>
+    <div class="note"><img src="icons/monitor.svg" width="18" height="18" alt="">DETECTED ON THIS PC</div>
+  </div>
+
+  <section class="card models-panel first" aria-labelledby="hw-h">
+    <div class="row between"><h2 class="panel-title" id="hw-h">This computer</h2>
+      <button type="button" class="text-btn red" id="setup-recheck">Check again</button></div>
+    <div class="hw-grid" id="setup-hw"><p class="help">Checking this computer…</p></div>
+    <div class="setup-warns" id="setup-warns"></div>
+  </section>
+
+  <section class="card models-panel" aria-labelledby="eng-h">
+    <div class="step-head"><span class="step-num" id="step-engine">1</span><h2 class="panel-title" id="eng-h">Engine</h2></div>
+    <p class="help" style="font-size:12px">The program that runs the models on your graphics card. The recommended one is picked for your hardware.</p>
+    <div class="choices" id="setup-engines"></div>
+  </section>
+
+  <section class="card models-panel" aria-labelledby="mod-h">
+    <div class="step-head"><span class="step-num" id="step-model">2</span><h2 class="panel-title" id="mod-h">Model</h2></div>
+    <p class="help" style="font-size:12px" id="setup-model-help">The AI model that draws the images. One-time download; it resumes if interrupted.</p>
+    <div class="choices" id="setup-models"></div>
+    <div class="mem-row">
+      <div><strong>Low-memory mode</strong>
+        <p class="help" id="setup-mem-help">Keeps model weights in RAM and decodes in tiles. Fits small GPUs, but slower.</p></div>
+      <div class="seg mem-seg" id="setup-mem" role="group" aria-label="Low-memory mode">
+        <button type="button" data-mem="auto">Auto</button><button type="button" data-mem="on">On</button><button type="button" data-mem="off">Off</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card models-panel" aria-labelledby="bench-h">
+    <div class="step-head"><span class="step-num" id="step-bench">3</span><h2 class="panel-title" id="bench-h">Speed test</h2></div>
+    <p class="help" style="font-size:12px">Makes two test images with your default model, so you know what to expect. Optional; takes under a minute.</p>
+    <div id="setup-bench"></div>
+    <div><button type="button" class="btn" id="setup-bench-run">Run speed test</button></div>
+  </section>
+
+  <div class="setup-foot"><span class="help" id="setup-hint" style="font-size:13px"></span>
+    <a class="btn red" href="#create" id="setup-go">Start creating</a></div>
+</main>
+
+<!-- ============ CONNECT (agents + API) ============ -->
+<main class="page" id="view-connect" hidden>
+  <div class="page-head">
+    <div>
+      <div class="title-row"><h1>Plug it in.</h1><span class="kicker">AGENTS &amp; API</span></div>
+      <p class="lede">Let AI agents and your own tools make images here — through MCP or the OpenAI-compatible API.</p>
+    </div>
+    <div class="note"><img src="icons/monitor.svg" width="18" height="18" alt="">THIS MACHINE ONLY</div>
+  </div>
+  <div class="panels connect-panels">
+  <section class="card agents-card" id="agents-panel" aria-labelledby="agents-h">
+    <div class="row between"><h2 class="panel-title" id="agents-h">Agents (MCP)</h2><span class="micro">Claude Code · Codex · Antigravity · Hermes</span></div>
+    <p class="help" style="font-size:12px;line-height:1.5">AI agents can drive Fatima Image Studio through MCP: make batches, wait for them, check the images, fix weak ones,
+      upscale and export. They can't download models or delete anything, and they only save to the Exports folder.</p>
+    <div class="field" style="gap:8px">
+      <span class="label">Connect an agent</span>
+      <div class="v-tabs light-tabs" role="tablist" aria-label="Agent" id="mcp-tabs">
+        <button type="button" role="tab" data-agent="claude" aria-selected="true">Claude Code</button>
+        <button type="button" role="tab" data-agent="codex" aria-selected="false">Codex</button>
+        <button type="button" role="tab" data-agent="antigravity" aria-selected="false">Antigravity</button>
+        <button type="button" role="tab" data-agent="hermes" aria-selected="false">Hermes</button>
+        <button type="button" role="tab" data-agent="stdio" aria-selected="false">Other (stdio)</button>
+      </div>
+      <p class="help" id="mcp-where" style="font-size:12px"></p>
+      <pre class="snippet" id="mcp-snippet"></pre>
+      <div class="row" style="gap:8px"><button type="button" class="btn red" id="mcp-copy">Copy with API key</button>
+        <span class="help">Fatima Image Studio must be running for agents to connect.</span></div>
+    </div>
+    <hr class="divider">
+    <div class="field" style="gap:8px">
+      <span class="label">Folders agents may read reference images from</span>
+      <div id="agent-dirs"></div>
+      <div class="row" style="gap:8px"><button type="button" class="btn" id="agent-dir-add">Add folder…</button>
+        <span class="help">Batches and Exports are always readable.</span></div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="set-agents-nc">
+      <span class="switch-ui" aria-hidden="true"></span>
+      <span><strong>Let agents use non-commercial models</strong><span class="help" style="display:block;font-size:12px">Off keeps automated work safe to monetize (FLUX.2 klein 9B is non-commercial).</span></span>
+    </label>
+    <hr class="divider">
+    <div class="field" style="gap:8px">
+      <span class="label">Named references</span>
+      <p class="help" style="font-size:12px">Save images under short names (like <span class="mono">egg-character</span>) so agents can say “pin egg-character”.</p>
+      <div class="ref-lib" id="ref-lib"></div>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <label class="sr-only" for="ref-new-name">Reference name</label>
+        <input class="input" id="ref-new-name" placeholder="egg-character" style="flex:1 1 200px;height:40px">
+        <button type="button" class="btn" id="ref-new-btn">Choose image &amp; save</button>
+      </div>
+    </div>
+  </section>
+
+    <section class="api-panel" aria-labelledby="api-h">
+      <div class="row between"><h2 class="panel-title" id="api-h">OpenAI-compatible API</h2><img src="icons/terminal.svg" width="24" height="24" alt=""></div>
+      <div class="field" style="gap:11px;flex:none">
+        <span class="label">Base URL</span>
+        <div class="url-box"><span id="set-api-base"></span><button type="button" class="icon-btn" id="url-copy" aria-label="Copy base URL"><img src="icons/copy-light.svg" width="17" height="17" alt=""></button></div>
+      </div>
+      <div class="field" style="gap:11px;flex:none">
+        <label class="label" for="set-key">API key</label>
+        <div class="key-row">
+          <input id="set-key" type="password" readonly spellcheck="false" autocomplete="off">
+          <button type="button" class="text-btn lime" id="key-show">Show</button>
+          <button type="button" class="text-btn lime" id="key-copy">Copy</button>
+          <button type="button" class="text-btn lime" id="key-save" hidden>Save</button>
+        </div>
+      </div>
+      <div>
+        <span class="label">Available endpoints</span>
+        <div class="endpoint"><span class="route"><span class="method">POST</span>/v1/images/generations</span><span>Generate images from a prompt</span></div>
+        <div class="endpoint"><span class="route"><span class="method">POST</span>/v1/images/edits</span><span>Generate with reference images</span></div>
+        <div class="endpoint"><span class="route"><span class="method">GET</span>/v1/models</span><span>List available models</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <p class="help" style="font-size:12px;line-height:1.5;color:var(--sub)">API requests run ahead of batch images.</p>
+        <a class="text-btn lime" href="/docs" target="_blank" rel="noopener" style="font-size:13px">Full reference · /docs <img src="icons/arrow-up-right-lime.svg" width="16" height="16" alt=""></a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ============ SETTINGS ============ -->
+<main class="page" id="view-settings" hidden>
+  <div class="page-head">
+    <div>
+      <div class="title-row"><h1>Tune your studio.</h1><span class="kicker">SETTINGS</span></div>
+      <p class="lede">Generation defaults, folders and how the app runs.</p>
+    </div>
+    <div class="note"><img src="icons/monitor.svg" width="18" height="18" alt=""><a id="app-version" target="_blank" rel="noopener" style="color:inherit">THIS MACHINE ONLY</a></div>
+  </div>
+
+  <div class="panels">
+    <form class="card gen-panel" id="settings-form">
+      <div class="row between">
+        <div class="row"><img src="icons/sliders.svg" width="22" height="22" alt=""><h2 class="panel-title">Generation</h2></div>
+        <span class="micro">Defaults</span>
+      </div>
+      <hr class="divider">
+      <div class="field" style="gap:9px">
+        <label class="label" for="set-batches">Batches folder</label>
+        <div class="row" style="gap:8px"><input class="input mono" id="set-batches" name="batches_dir" spellcheck="false">
+          <button type="button" class="btn" data-browse="set-batches" style="height:44px">Browse…</button></div>
+        <p class="help" style="font-size:12px;line-height:1.5">New batch folders are created here. Existing batches in the new folder are picked up automatically.</p>
+      </div>
+      <div class="field" style="gap:9px">
+        <label class="label" for="set-exports">Exports folder</label>
+        <div class="row" style="gap:8px"><input class="input mono" id="set-exports" name="exports_dir" spellcheck="false">
+          <button type="button" class="btn" data-browse="set-exports" style="height:44px">Browse…</button></div>
+        <p class="help" style="font-size:12px;line-height:1.5">Where AI agents save images and exports. They can't write anywhere else.</p>
+      </div>
+      <div class="pair" style="gap:20px">
+        <div class="field">
+          <label class="label" for="set-model">Default model</label>
+          <div class="select-wrap"><select class="select" id="set-model" name="default_model"></select><img src="icons/chevron-down.svg" width="16" height="16" alt=""></div>
+        </div>
+        <div class="field">
+          <label class="label" for="set-steps">Steps (0 = each model's own)</label>
+          <input class="input mono" id="set-steps" name="steps" type="number" min="0" max="50">
+        </div>
+      </div>
+      <div class="pair" style="gap:20px">
+        <div class="field">
+          <label class="label" for="set-idle">Unload model after idle (min)</label>
+          <input class="input mono" id="set-idle" name="idle_unload_minutes" type="number" min="0" max="1440">
+        </div>
+        <div class="field">
+          <label class="label" for="set-port">Port</label>
+          <input class="input mono" id="set-port" name="port" type="number" min="1024" max="65535">
+        </div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" name="start_with_windows" id="set-autostart">
+        <span class="switch-ui" aria-hidden="true"></span>
+        <span><strong>Start with Windows</strong><span class="help" style="display:block;font-size:12px">Runs quietly in the tray after you sign in, so the API is always available.</span></span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" name="notify" id="set-notify">
+        <span class="switch-ui" aria-hidden="true"></span>
+        <span><strong>Notify when a batch finishes</strong><span class="help" style="display:block;font-size:12px">A Windows notification from the tray icon, with how many images failed, if any.</span></span>
+      </label>
+      <div class="guidance">
+        <p>FLUX.2 klein is tuned for 4 steps and Z-Image Turbo for 8 — leave Steps at 0 to use those.</p>
+        <p>Unloading frees GPU memory between sessions; 0 keeps the model loaded. A port change applies after restarting the app.</p>
+      </div>
+      <div class="row between" style="margin-top:auto">
+        <span class="help" style="font-size:12px">Defaults apply to new batches.</span>
+        <button type="submit" class="btn red"><img src="icons/check.svg" width="18" height="18" alt="">Save settings</button>
+      </div>
+    </form>
+
+  </div>
+
+  <section class="machine" aria-label="This machine">
+    <div class="compute">
+      <img src="icons/cpu.svg" width="42" height="42" alt="">
+      <div style="display:flex;flex-direction:column;gap:8px"><span class="micro">Local compute</span><span class="big" id="m-gpu"></span></div>
+    </div>
+    <span class="hrule"></span>
+    <div class="col"><span class="micro">Model</span><span class="mono" id="m-model"></span><span id="m-model-state"></span></div>
+    <div class="col"><span class="micro">Memory behavior</span><span class="mono" id="m-idle"></span><span id="m-idle-help"></span></div>
+    <span class="chip dark"><img src="icons/dot-lime.svg" width="5" height="5" alt=""><span id="m-state"></span></span>
+  </section>
+
+
+
+</main>
+
+<footer class="appfoot"><span id="foot-dir"></span><span id="foot-meta"></span></footer>
+
+<!-- ============ IMAGE VIEWER ============ -->
+<dialog class="viewer" id="viewer" aria-label="Image viewer">
+  <div class="viewer-stage">
+    <button type="button" class="viewer-nav" id="v-prev" aria-label="Previous image"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+    <div class="viewer-img" id="v-img"></div>
+    <button type="button" class="viewer-nav" id="v-next" aria-label="Next image"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+  </div>
+  <aside class="viewer-side">
+    <div class="row between">
+      <span class="micro" id="v-pos"></span>
+      <button type="button" class="viewer-close" id="v-close" aria-label="Close viewer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2 class="v-file" id="v-file"></h2>
+      <span class="micro" id="v-batch" style="text-transform:none"></span>
+      <div id="v-status"></div>
+    </div>
+    <dl class="v-facts" id="v-facts"></dl>
+    <div class="v-prompt">
+      <span class="micro">Prompt</span>
+      <p id="v-prompt"></p>
+    </div>
+    <div class="v-actions">
+      <button type="button" class="btn lime block" data-v="regen-same"><img src="icons/rotate-cw.svg" width="18" height="18" alt="">Regenerate · same seed</button>
+      <button type="button" class="btn dark block" data-v="regen-new">Regenerate · new seed</button>
+      <div class="pair" style="gap:8px">
+        <button type="button" class="btn dark block" data-v="copy">Copy prompt</button>
+        <a class="btn dark block" id="v-open" href="#" target="_blank" rel="noopener">Full size ↗</a>
+      </div>
+      <div class="v-make">
+        <span class="micro">Make a new version</span>
+        <div class="v-tabs" role="tablist" aria-label="Kind of new version">
+          <button type="button" role="tab" data-tab="edit" aria-selected="true">Edit</button>
+          <button type="button" role="tab" data-tab="vary" aria-selected="false">Vary</button>
+          <button type="button" role="tab" data-tab="inpaint" aria-selected="false">Inpaint</button>
+        </div>
+        <p class="help tiny" id="v-tab-help" style="color:var(--sub)"></p>
+        <div class="v-brush" id="v-brush" hidden>
+          <label class="micro" for="v-brush-size" style="text-transform:none">Brush</label>
+          <input type="range" id="v-brush-size" min="10" max="200" value="60">
+          <button type="button" class="text-btn lime" id="v-mask-clear">Clear</button>
+        </div>
+        <div class="v-strength" id="v-strength" hidden>
+          <label class="micro" for="v-strength-range" style="text-transform:none">Change</label>
+          <input type="range" id="v-strength-range" min="0.1" max="0.7" step="0.05" value="0.3">
+          <span class="mono" id="v-strength-value">0.30</span>
+        </div>
+        <textarea class="v-text" id="v-edit-text" rows="2"></textarea>
+        <button type="button" class="btn lime block" data-v="make" id="v-make-btn">Apply edit</button>
+      </div>
+      <div class="v-upscale">
+        <span class="micro">Upscale</span>
+        <div class="row" style="gap:8px">
+          <div class="select-wrap" style="flex:1;min-width:0"><select class="select dark" id="v-up-model" aria-label="Upscaler"></select></div>
+          <button type="button" class="btn dark" data-v="up2">2×</button>
+          <button type="button" class="btn dark" data-v="up4">4×</button>
+        </div>
+        <p class="help tiny" id="v-up-status" style="color:var(--sub)"></p>
+      </div>
+      <button type="button" class="btn dark block danger" data-v="delete">Delete image</button>
+      <p class="help tiny" style="color:var(--sub)">← → to browse · Esc to close. Regenerating replaces this file when it finishes.</p>
+    </div>
+  </aside>
+</dialog>
+
+<!-- ============ PRESET / UPSCALE DIALOGS ============ -->
+<dialog class="confirm" id="preset-dlg">
+  <form method="dialog">
+    <h2>Save preset</h2>
+    <label class="field" style="gap:8px"><span class="label">Name</span>
+      <input class="input" id="preset-name" maxlength="60" placeholder="YouTube 16:9 cartoon" autocomplete="off"></label>
+    <label class="switch" id="preset-ref-row"><input type="checkbox" id="preset-ref"><span class="switch-ui" aria-hidden="true"></span>
+      <span>Include the batch reference image</span></label>
+    <p id="preset-note">Saving with an existing preset's name replaces it.</p>
+    <div class="row" style="justify-content:flex-end;gap:9px">
+      <button class="btn" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn red" value="ok">Save preset</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="confirm" id="export-dlg">
+  <form method="dialog">
+    <h2>Export batch</h2>
+    <p id="export-note"></p>
+    <div class="pair">
+      <label class="field"><span class="label">Images</span>
+        <div class="select-wrap"><select class="select" id="ex-content">
+          <option value="originals">Generated images</option><option value="upscaled">Upscaled copies</option><option value="both">Both</option>
+        </select><img src="icons/chevron-down.svg" width="16" height="16" alt=""></div></label>
+      <label class="field"><span class="label">File names</span>
+        <div class="select-wrap"><select class="select" id="ex-names">
+          <option value="keep">01_a.png (as on disk)</option><option value="prompt">01_a_words-from-prompt.png</option>
+        </select><img src="icons/chevron-down.svg" width="16" height="16" alt=""></div></label>
+    </div>
+    <label class="switch"><input type="checkbox" id="ex-extras" checked><span class="switch-ui" aria-hidden="true"></span>
+      <span>Include batch.json and prompts.txt</span></label>
+    <div class="row" style="flex-wrap:wrap;gap:9px">
+      <button type="button" class="btn" id="ex-sheet-pdf">Contact sheet · PDF</button>
+      <button type="button" class="btn" id="ex-sheet-png">Contact sheet · PNG</button>
+      <span style="flex:1"></span>
+      <button class="btn" value="cancel">Close</button>
+      <button type="button" class="btn red" id="ex-zip">Download ZIP</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="confirm" id="upscale-dlg">
+  <form method="dialog">
+    <h2>Upscale this batch</h2>
+    <p id="upscale-note"></p>
+    <div class="pair">
+      <label class="field"><span class="label">Size</span>
+        <div class="select-wrap"><select class="select" id="up-factor"><option value="2">2× larger</option><option value="4">4× larger</option></select><img src="icons/chevron-down.svg" width="16" height="16" alt=""></div></label>
+      <label class="field"><span class="label">Upscaler</span>
+        <div class="select-wrap"><select class="select" id="up-model"></select><img src="icons/chevron-down.svg" width="16" height="16" alt=""></div></label>
+    </div>
+    <div class="row" style="justify-content:flex-end;gap:9px">
+      <button class="btn" value="cancel">Cancel</button>
+      <button class="btn red" value="ok">Upscale</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============ CONFIRM ============ -->
+<dialog class="confirm" id="confirm">
+  <form method="dialog">
+    <h2 id="confirm-title"></h2>
+    <p id="confirm-body"></p>
+    <div class="row" style="justify-content:flex-end;gap:9px">
+      <button class="btn" value="cancel">Cancel</button>
+      <button class="btn red" value="ok" id="confirm-ok">Delete</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

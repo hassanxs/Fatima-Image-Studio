@@ -1,0 +1,9 @@
+# Python 3.11+ on Windows. The installer pins exact versions in packaging/requirements-lock.txt.
+# Install:  python -m pip install -r requirements.txt
+fastapi>=0.115          # web server + API (brings starlette and pydantic)
+uvicorn>=0.30           # runs the server
+httpx>=0.27             # talks to the engine, Hugging Face, and (MCP) the app's own API
+python-multipart>=0.0.9 # file uploads (reference images, LoRAs)
+pillow>=10              # images, thumbnails, contact sheets, tray icon
+pystray>=0.19           # tray icon
+mcp>=1.10,<2            # MCP server for AI agents (2.x renamed FastMCP; port before upgrading)

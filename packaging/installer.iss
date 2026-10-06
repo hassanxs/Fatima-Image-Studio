@@ -1,0 +1,108 @@
+; Inno Setup 6 script for Fatima Image Studio. Built by packaging\build.ps1, which passes
+; AppVersion, SourceDir (the staged app + embeddable Python) and OutputDir.
+;
+; Per-user install, no admin prompt. The app keeps models, engine and settings in
+; %LOCALAPPDATA%\Fatima Image Studio and images in Pictures\Fatima Image Studio, so updates never touch them.
+
+#define AppName "Fatima Image Studio"
+#define AppExeArgs "-m studio --tray"
+#define RepoUrl "https://github.com/hassanxs/fatima-image-studio"
+
+[Setup]
+; Never change AppId: it is how updates find the existing install.
+AppId={{0DF886EC-A4FE-4BD2-A7F4-94BA81A7ADE4}
+AppName={#AppName}
+AppVersion={#AppVersion}
+AppVerName={#AppName} {#AppVersion}
+AppPublisher=Hassan
+AppPublisherURL={#RepoUrl}
+AppSupportURL={#RepoUrl}/issues
+AppUpdatesURL={#RepoUrl}/releases
+DefaultDirName={localappdata}\Programs\{#AppName}
+DisableProgramGroupPage=yes
+DisableDirPage=auto
+PrivilegesRequired=lowest
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+MinVersion=10.0
+LicenseFile={#SourceDir}\LICENSE
+SetupIconFile={#SourceDir}\app.ico
+UninstallDisplayIcon={app}\app.ico
+UninstallDisplayName={#AppName}
+OutputDir={#OutputDir}
+OutputBaseFilename=FatimaImageStudio-Setup-{#AppVersion}
+Compression=lzma2/ultra64
+SolidCompression=yes
+WizardStyle=modern
+CloseApplications=no
+
+[Tasks]
+Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: unchecked
+Name: "startup"; Description: "Start with Windows (runs quietly in the tray)"; GroupDescription: "Shortcuts:"; Flags: unchecked
+
+[InstallDelete]
+; Replace the code and runtime wholesale on update, so files removed upstream don't linger.
+Type: filesandordirs; Name: "{app}\studio"
+Type: filesandordirs; Name: "{app}\python"
+
+[Files]
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+
+[Icons]
+Name: "{userprograms}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "{#AppExeArgs}"; WorkingDir: "{app}"; IconFilename: "{app}\app.ico"; Comment: "Bulk image generation on this PC"
+Name: "{userdesktop}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "{#AppExeArgs}"; WorkingDir: "{app}"; IconFilename: "{app}\app.ico"; Tasks: desktopicon
+; Same name and arguments the app's own "Start with Windows" switch uses, so the two stay in sync.
+Name: "{userstartup}\{#AppName}"; Filename: "{app}\python\pythonw.exe"; Parameters: "{#AppExeArgs} --no-browser"; WorkingDir: "{app}"; IconFilename: "{app}\app.ico"; Tasks: startup
+
+[Run]
+Filename: "{app}\python\pythonw.exe"; Parameters: "{#AppExeArgs}"; WorkingDir: "{app}"; Description: "Open {#AppName}"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+Type: files; Name: "{userstartup}\{#AppName}.lnk"
+Type: filesandordirs; Name: "{app}\studio"
+Type: filesandordirs; Name: "{app}\python"
+
+[Code]
+const
+  DataDir = '{localappdata}\Fatima Image Studio';
+
+{ Stop a running copy (its Python lives in the install folder) so its files can be replaced. }
+procedure StopRunningApp();
+var
+  Code: Integer;
+  Cmd: String;
+begin
+  Cmd := '-NoProfile -NonInteractive -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like ''' +
+         ExpandConstant('{app}') + '\python\*'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"';
+  Exec('powershell.exe', Cmd, '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Sleep(800);
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  if DirExists(ExpandConstant('{app}\python')) then
+    StopRunningApp();
+  Result := '';
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  StopRunningApp();
+  Result := True;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  Dir: String;
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    Dir := ExpandConstant(DataDir);
+    if DirExists(Dir) and not UninstallSilent() then
+      if MsgBox('Also delete the downloaded models, engine and settings?' + #13#10 + #13#10 +
+                'They can take 5-30 GB in:' + #13#10 + Dir + #13#10 + #13#10 +
+                'Choose No to keep them for a later reinstall. Your images in Pictures\Fatima Image Studio are always kept.',
+                mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+        DelTree(Dir, True, True, True);
+  end;
+end;
