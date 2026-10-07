@@ -243,7 +243,11 @@ class Engine:
                                 raise Cancelled()
                             raise EngineError("Timed out")
                         if job["status"] == "failed":
-                            raise EngineError((job.get("error") or {}).get("message") or "Generation failed")
+                            message = (job.get("error") or {}).get("message") or "Generation failed"
+                            if "no results" in message and width * height > 2_500_000:  # how running out of VRAM shows up
+                                message = ("Not enough GPU memory for this size. Turn on Low-memory mode "
+                                           "(Settings → Setup) or choose a smaller size.")
+                            raise EngineError(message)
             except httpx.HTTPError as e:
                 raise EngineError(f"Could not reach the engine: {e}") from e
             finally:

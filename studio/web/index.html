@@ -155,6 +155,16 @@
         <div class="seg size-level" id="size-level" role="group" aria-label="Resolution">
           <button type="button" data-level="s">Small</button><button type="button" data-level="m">Medium</button><button type="button" data-level="l">Large</button>
         </div>
+        <div class="select-wrap">
+          <select class="select" id="size-standard" aria-label="Standard sizes">
+            <option value="">Standard sizes — Full HD, social media, print…</option>
+              <optgroup label="Video & screens"><option value="1920x1080">1920 × 1080 · Full HD 16:9</option><option value="1280x720">1280 × 720 · HD 16:9</option><option value="2048x1152">2048 × 1152 · 2K 16:9 (largest)</option><option value="1600x900">1600 × 900 · HD+ 16:9</option><option value="1366x768">1366 × 768 · Laptop screen</option><option value="1080x1920">1080 × 1920 · Full HD vertical 9:16 — Shorts, Reels, TikTok</option><option value="720x1280">720 × 1280 · HD vertical 9:16</option><option value="2048x858">2048 × 858 · Cinema 2.39:1</option></optgroup>
+              <optgroup label="Social media"><option value="1280x720">1280 × 720 · YouTube thumbnail</option><option value="1080x1080">1080 × 1080 · Instagram square 1:1</option><option value="1080x1350">1080 × 1350 · Instagram portrait 4:5</option><option value="1080x1920">1080 × 1920 · Instagram / Facebook story 9:16</option><option value="1200x630">1200 × 630 · Link preview (Facebook, LinkedIn, X)</option><option value="1500x500">1500 × 500 · X header</option><option value="1000x1500">1000 × 1500 · Pinterest pin 2:3</option></optgroup>
+              <optgroup label="Print & photo"><option value="1536x1024">1536 × 1024 · Photo 3:2 landscape</option><option value="1024x1536">1024 × 1536 · Photo 3:2 portrait</option><option value="1600x1200">1600 × 1200 · 4:3 landscape</option><option value="1200x1600">1200 × 1600 · 4:3 portrait</option><option value="1414x2000">1414 × 2000 · A-series paper (A4, A3…) portrait</option><option value="2000x1414">2000 × 1414 · A-series paper landscape</option></optgroup>
+              <optgroup label="Square"><option value="512x512">512 × 512 · Small</option><option value="768x768">768 × 768 · Medium</option><option value="1024x1024">1024 × 1024 · Standard</option><option value="1536x1536">1536 × 1536 · Large</option><option value="2048x2048">2048 × 2048 · Largest (8 GB GPUs: Low-memory mode)</option></optgroup>
+          </select>
+          <img src="icons/chevron-down.svg" width="16" height="16" alt="">
+        </div>
         <div class="pair">
           <label class="dim"><input class="input mono" id="width" type="number" min="256" max="2048" step="1" value="1024" aria-label="Width"><span>Width</span></label>
           <label class="dim"><input class="input mono" id="height" type="number" min="256" max="2048" step="1" value="1024" aria-label="Height"><span>Height</span></label>

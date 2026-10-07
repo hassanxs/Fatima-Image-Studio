@@ -428,6 +428,18 @@ function renderSize() {
     b.setAttribute('aria-pressed', S.size.ratio !== 'custom' && b.dataset.level === S.size.level));
   const [w, h] = getSize();
   $('size-mp').textContent = `${w} × ${h} · ${(w * h / 1e6).toFixed(1)} MP`;
+  // Show the standard size this matches (the first entry with these numbers), else the placeholder.
+  const std = $('size-standard');
+  if (std.selectedOptions[0]?.value !== `${w}x${h}`) std.value = [...std.options].some((o) => o.value === `${w}x${h}`) ? `${w}x${h}` : '';
+  // Above ~3.3 MP an 8 GB GPU runs out of memory unless Low-memory mode moves the weights to RAM.
+  const vram = SETUP?.gpu?.vram_gb, mp = (w * h) / (1024 * 1024);
+  const limit = !vram || vram >= 12 ? Infinity : vram >= 8 ? 3.3 : 2;
+  const tooBig = mp > limit && !SETUP?.low_vram_active;
+  $('size-help').classList.toggle('warn-text', tooBig);
+  if (tooBig) {
+    $('size-help').textContent = `Large for your ${vram} GB GPU — it may run out of memory. Turn on Low-memory mode in Settings → Setup (slower), or pick a smaller size.`;
+    return;
+  }
   $('size-help').textContent = S.size.ratio === 'auto' ? 'Auto keeps the first reference image\'s shape.'
     : S.size.ratio === 'custom' ? 'Custom size, 256–2048 on each side. Sizes like 1920 × 1080 are made slightly larger and trimmed to fit exactly.'
     : 'Pick a shape and a resolution, or type an exact width and height.';
@@ -449,6 +461,18 @@ $('size-level').addEventListener('click', (e) => {
     renderSize(); updateSummary(); return;
   }
   applySize();
+});
+$('size-standard').addEventListener('change', (e) => {
+  const [w, h] = e.target.value.split('x').map(Number);
+  if (!w) return;
+  $('width').value = w; $('height').value = h;
+  S.size.ratio = 'custom';
+  for (const [k, rw, rh] of RATIOS) for (const [lv, mp] of Object.entries(LEVELS)) {  // light up a matching button
+    const [sw, sh] = sizeFor(rw, rh, mp);
+    if (sw === w && sh === h) { S.size.ratio = k; S.size.level = lv; }
+  }
+  renderSize();
+  updateSummary();
 });
 for (const id of ['width', 'height']) {
   $(id).addEventListener('input', () => { S.size.ratio = 'custom'; renderSize(); updateSummary(); });
@@ -1905,6 +1929,7 @@ let SETUP = null, benchRunning = false;
 async function loadSetup(refresh = false) {
   try { SETUP = await api('/api/setup' + (refresh ? '?refresh=true' : '')); } catch { return; }
   if (S.view === 'setup') renderSetup();
+  renderSize();  // the size warning depends on the GPU and Low-memory mode
 }
 const FIT = {
   fits: ['ok', 'Runs fully on your GPU'], tight: ['', 'Slower on your GPU'],
