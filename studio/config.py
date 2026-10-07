@@ -88,6 +88,11 @@ FILES = {
     "Qwen3-8B-Q4_K_M.gguf": (HF + "unsloth/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf", 5027784512),
     "flux2-vae.safetensors": (HF + "Comfy-Org/flux2-klein-4B/resolve/main/split_files/vae/flux2-vae.safetensors", 336211292),
     "ae.safetensors": (HF + "Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors", 335304388),
+    # Qwen-Image 2.1 (ComfyUI-format GGUF, "base" branch), its text encoder, VAE and the encoder's vision part
+    "qwen-image-2.1-Q4_K_M.gguf": (HF + "abenzerps/Qwen-Image-2.1-GGUF/resolve/base/qwen-image-2.1-Q4_K_M.gguf", 4604557984),
+    "Qwen3VL-8B-Instruct-Q4_K_M.gguf": (HF + "Qwen/Qwen3-VL-8B-Instruct-GGUF/resolve/main/Qwen3VL-8B-Instruct-Q4_K_M.gguf", 5027784800),
+    "mmproj-Qwen3VL-8B-Instruct-F16.gguf": (HF + "Qwen/Qwen3-VL-8B-Instruct-GGUF/resolve/main/mmproj-Qwen3VL-8B-Instruct-F16.gguf", 1159029824),
+    "qwen_image_2.1_vae_bf16.safetensors": (HF + "Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors", 675509688),
 }
 
 _FLUX2 = ["--diffusion-fa", "--sage-attn", "--vae-conv-direct", "--cfg-scale", "1.0", "--sampling-method", "euler"]
@@ -99,7 +104,7 @@ MODELS = {
            "about": "The default. Fast, good at following prompts and at editing with reference images."},
     "q8": {"label": "FLUX.2 klein 4B · Q8", "short": "FLUX.2 klein 4B · Q8 · quality", "api_id": "flux2-klein-4b-q8", "family": "flux2-klein-4b",
            "diffusion": "flux-2-klein-4b-Q8_0.gguf", "llm": "Qwen3-4B-Q8_0.gguf", "vae": "flux2-vae.safetensors",
-           "steps": 4, "flags": _FLUX2, "refs": True, "license": "Apache 2.0 — commercial use OK",
+           "steps": 4, "flags": _FLUX2, "refs": True, "license": "Apache 2.0 — commercial use OK", "speed": 1.3,
            "about": "Same model at higher precision: slightly cleaner detail, somewhat slower."},
     "zimage": {"label": "Z-Image Turbo · Q4", "short": "Z-Image Turbo · photoreal", "api_id": "z-image-turbo-q4", "family": "z-image",
                "diffusion": "z_image_turbo-Q4_0.gguf", "llm": "Qwen3-4B-Q4_K_M.gguf", "vae": "ae.safetensors",
@@ -108,14 +113,26 @@ MODELS = {
                "about": "Strong at photorealism and lettering. No reference images (image-to-image and inpainting still work)."},
     "klein9b": {"label": "FLUX.2 klein 9B · Q4", "short": "FLUX.2 klein 9B · best quality", "api_id": "flux2-klein-9b-q4", "family": "flux2-klein-9b",
                 "diffusion": "flux-2-klein-9b-Q4_0.gguf", "llm": "Qwen3-8B-Q4_K_M.gguf", "vae": "flux2-vae.safetensors",
-                "steps": 4, "flags": _FLUX2, "refs": True, "noncommercial": True,
+                "steps": 4, "flags": _FLUX2, "refs": True, "noncommercial": True, "speed": 2.5,
                 "license": "FLUX Non-Commercial — not for monetized or client work",
                 "about": "Bigger, more detailed FLUX.2. Slower, and tight on 8 GB of GPU memory."},
+    # Optional per model: "vision" (text encoder's image part, for references), "cfg" (default 1.0),
+    # "align" (sizes are rendered at a multiple of this; default 16).
+    "qwen21": {"label": "Qwen-Image 2.1 · Q4", "short": "Qwen-Image 2.1 · text & detail", "api_id": "qwen-image-2.1-q4",
+               "family": "qwen-image-2.1", "diffusion": "qwen-image-2.1-Q4_K_M.gguf",
+               "llm": "Qwen3VL-8B-Instruct-Q4_K_M.gguf", "vision": "mmproj-Qwen3VL-8B-Instruct-F16.gguf",
+               "vae": "qwen_image_2.1_vae_bf16.safetensors", "steps": 20, "cfg": 6.0, "align": 32,
+               "speed": 20,  # time per image relative to FLUX.2 klein 4B Q4, for the first estimate
+               "flags": ["--fa", "--sampling-method", "euler"], "refs": True, "noncommercial": True,
+               "license": "Qwen Research License — non-commercial",
+               "about": "Best at readable text in images and detailed scenes; can also make transparent PNGs. "
+                        "Slow on 8 GB GPUs (about 2–3 minutes per 1024² image)."},
 }
 
 
 # LoRAs only work on the base model they were trained for; models sharing a family can share LoRAs.
-FAMILIES = {"flux2-klein-4b": "FLUX.2 klein 4B", "flux2-klein-9b": "FLUX.2 klein 9B", "z-image": "Z-Image"}
+FAMILIES = {"flux2-klein-4b": "FLUX.2 klein 4B", "flux2-klein-9b": "FLUX.2 klein 9B", "z-image": "Z-Image",
+            "qwen-image-2.1": "Qwen-Image 2.1"}
 MAX_LORAS = 3  # per batch
 
 
@@ -130,7 +147,7 @@ def steps_for(cfg: dict, model: str) -> int:
 
 def model_files(key: str) -> list[str]:
     m = MODELS[key]
-    return [m["diffusion"], m["llm"], m["vae"]]
+    return [m["diffusion"], m["llm"], m["vae"], *([m["vision"]] if m.get("vision") else [])]
 
 
 # Real-ESRGAN upscalers (BSD-3-Clause) in models/upscalers; the file stem is the engine's upscaler name.

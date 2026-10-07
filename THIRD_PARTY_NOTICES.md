@@ -54,6 +54,9 @@ These are not part of the installer. The app downloads them from their publisher
 | FLUX.2 klein 9B (GGUF) | FLUX Non-Commercial License | https://huggingface.co/black-forest-labs, GGUF by leejet |
 | Z-Image Turbo (GGUF) | Apache 2.0 | https://huggingface.co/Tongyi-MAI, GGUF by leejet |
 | Qwen3 4B / 8B text encoders (GGUF) | Apache 2.0 | https://huggingface.co/Qwen, GGUF by unsloth |
+| Qwen-Image 2.1 (GGUF) | Qwen Research License (non-commercial) | https://huggingface.co/Qwen/Qwen-Image-2.1, GGUF by abenzerps |
+| Qwen3-VL 8B text encoder + vision (GGUF) | Apache 2.0 | https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF |
+| Qwen-Image 2.1 VAE | Qwen Research License | https://huggingface.co/Comfy-Org/Qwen-Image-2.1 |
 | FLUX.2 VAE, Z-Image VAE | per the model's licence | https://huggingface.co/Comfy-Org |
 | LoRAs you import | each LoRA's own licence | shown on its Hugging Face page |
 

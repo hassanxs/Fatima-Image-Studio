@@ -109,6 +109,8 @@ the project folder.
   - FLUX.2 klein 4B Q4 / Q8 — Apache 2.0, the default.
   - Z-Image Turbo — Apache 2.0, strong at photorealism and lettering, no reference images, 8 steps.
   - FLUX.2 klein 9B — **non-commercial licence**: not for monetized videos or client work.
+  - Qwen-Image 2.1 — excellent readable text and detailed scenes, reference images and editing, transparent PNGs;
+    **non-commercial licence** (Qwen Research License). Slow on 8 GB GPUs (about 2–3 minutes per 1024² image).
 - **LoRAs** — *Models* page → *LoRA library*: paste a Hugging Face link (or upload a `.safetensors`). The app picks
   the right file, detects which base model it's for from its layer shapes, reads the trigger words and licence
   from the model card, and rewrites FLUX.2 layer names the engine would otherwise skip (without that, only

@@ -30,8 +30,9 @@ class Cancelled(Exception):
     pass
 
 
-def _up16(n: int) -> int:
-    return min(2048, -(-int(n) // 16) * 16)
+def _up16(n: int, align: int = 16) -> int:
+    """Round up to the model's size multiple (16, or 32 for some models), within the engine's limit."""
+    return min(2048 // align * align, -(-int(n) // align) * align)
 
 
 def _pad(png: bytes | None, w: int, h: int) -> bytes | None:
@@ -102,6 +103,7 @@ class Engine:
                 "--diffusion-model", str(models_dir / m["diffusion"]),
                 "--llm", str(models_dir / m["llm"]),
                 "--vae", str(models_dir / m["vae"]),
+                *(["--llm_vision", str(models_dir / m["vision"])] if m.get("vision") else []),
                 "--steps", str(m["steps"]), *self._flags(m)]
         (models_dir / "upscalers").mkdir(parents=True, exist_ok=True)
         args += ["--hires-upscalers-dir", str(models_dir / "upscalers")]
@@ -196,7 +198,8 @@ class Engine:
 
         The engine only makes sizes in multiples of 16, so any other size (e.g. 1920x1080) is made a
         little larger (1920x1088) and trimmed evenly back to the exact size asked for."""
-        gw, gh = _up16(width), _up16(height)
+        align = config.MODELS[model].get("align", 16)
+        gw, gh = _up16(width, align), _up16(height, align)
         if (gw, gh) != (width, height):
             init, mask = _pad(init, gw, gh), _pad(mask, gw, gh)
             png = await self.generate(model, prompt=prompt, width=gw, height=gh, seed=seed, steps=steps, refs=refs,
@@ -213,7 +216,7 @@ class Engine:
                 "strength": strength,
                 "lora": [{"path": l["file"], "multiplier": l["strength"]} for l in loras],
                 "sample_params": {"sample_method": "euler", "sample_steps": steps,
-                                  "guidance": {"txt_cfg": 1.0}},
+                                  "guidance": {"txt_cfg": config.MODELS[model].get("cfg", 1.0)}},
                 "output_format": "png",
             }
             if init and width * height > 1_200_000:

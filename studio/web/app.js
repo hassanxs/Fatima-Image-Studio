@@ -844,7 +844,8 @@ function promptTexts() {
 function secondsPerImage(w, h, model) {
   const seen = S.batches.find((b) => b.avg_seconds && b.settings.width === w && b.settings.height === h && b.settings.model === model);
   if (seen) return seen.avg_seconds;
-  return (0.6 + 6.4 * (w * h) / (1024 * 1024)) * (model === 'q8' ? 1.3 : 1);
+  const speed = S.state?.models.find((m) => m.key === model)?.speed || 1;  // relative to FLUX.2 klein 4B Q4
+  return (0.6 + 6.4 * (w * h) / (1024 * 1024)) * speed;
 }
 function updateSummary() {
   if (S.cmode === 'single') {

@@ -134,7 +134,8 @@ def create_app(cfg: dict) -> FastAPI:
         return {
             "engine": status,
             "models": [{"key": k, "label": m["label"], "short": m["short"], "installed": k in installed,
-                        "refs": m["refs"], "noncommercial": bool(m.get("noncommercial")), "family": m["family"]}
+                        "refs": m["refs"], "noncommercial": bool(m.get("noncommercial")), "family": m["family"],
+                        "speed": m.get("speed", 1.0)}
                        for k, m in config.MODELS.items()],
             "default_model": cfg["default_model"],
             "setup_ready": cfg["engine"] in config.installed_engines(cfg) and cfg["default_model"] in installed,
