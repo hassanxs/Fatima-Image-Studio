@@ -9,8 +9,6 @@ allowed in Settings; reference images are only read from the folders listed in S
 agent saves goes into the Exports folder from Settings.
 """
 import asyncio
-import base64
-import datetime as dt
 import io
 import json
 import re
@@ -219,37 +217,70 @@ def build(base: str, api_key, *, host_port: int | None = None) -> FastMCP:
 
     # ---- making images --------------------------------------------------------------
 
+    async def lora_settings(loras: list[dict]) -> list[dict]:
+        """[{"name", "strength"}] from an agent -> the library ids the app expects."""
+        r = await studio.call("GET", "/api/loras")
+        out = []
+        for e in loras:
+            hit = next((l for l in r["items"] if l["name"].lower() == str(e.get("name", "")).lower()), None)
+            if not hit:
+                raise ValueError(f"No LoRA called {e.get('name')!r}. Use list_loras.")
+            out.append({"id": hit["id"], "strength": e.get("strength", hit["strength"]),
+                        "use_triggers": e.get("use_triggers", True)})
+        return out
+
     @mcp.tool()
     async def generate_image(prompt: str, size: str = "1024x1024", model: str | None = None, seed: int | None = None,
                              references: list[str] | None = None, loras: list[dict] | None = None,
-                             style: str | None = None) -> list:
-        """Make one image now and save it to the Exports folder. Returns its path and a preview.
-        size: 'WIDTHxHEIGHT' (multiples of 16, 256-2048). references: up to 4 (named references,
-        'batch/file.png', links or allowed file paths) — with references the prompt can be an instruction
-        like 'make it night' to edit that image. loras: [{"name": ..., "strength": 0.8}]. style: text added
-        before the prompt."""
-        key = await studio.model(model)
-        text = f"{style}, {prompt}" if style else prompt
+                             style: str | None = None, images: int = 1) -> list:
+        """Make a single image now (made next, ahead of queued batches) and wait for it. It is saved in today's
+        Singles batch (named like '2026-10-07_Singles'), so get_batch, edit_image, regenerate_image, upscale
+        and export_batch work on it with the returned batch name and file. Returns path(s) and previews.
+        size: 'WIDTHxHEIGHT' (multiples of 16, 256-2048). images: 1-4 variants (seed, seed+1, ...).
+        references: up to 4 (named references, 'batch/file.png', links or allowed file paths) — with references
+        the prompt can be an instruction like 'make it night' to edit that image. loras: [{"name": ..., "strength": 0.8}].
+        style: text added before the prompt."""
+        try:
+            width, height = map(int, size.lower().split("x"))
+        except ValueError:
+            raise ValueError("size must be 'WIDTHxHEIGHT', e.g. '1024x1024'.")
+        if not 1 <= images <= 4:
+            raise ValueError("images must be 1-4.")
+        settings: dict = {"width": width, "height": height, "count": images, "seed": seed}
+        # The default model goes through the same check, so agents never get a non-commercial one unasked.
+        settings["model"] = await studio.model(model or (await studio.call("GET", "/api/state"))["default_model"])
+        if style:
+            settings["style"] = {"text": style, "position": "before"}
+        if loras:
+            settings["loras"] = await lora_settings(loras)
+        files = []
         if references:
             if len(references) > 4:
                 raise ValueError("Use at most 4 reference images.")
-            files = [("image[]", (f"ref{i}.png", await studio.image_bytes(r))) for i, r in enumerate(references)]
-            data = {"prompt": text, "size": size, "loras": json.dumps(loras or [])}
-            if key:
-                data["model"] = key
-            if seed is not None:
-                data["seed"] = str(seed)
-            r = await studio.call("POST", "/v1/images/edits", timeout=900, files=files, data=data)
-        else:
-            body = {"prompt": text, "size": size, "seed": seed, "loras": loras, **({"model": key} if key else {})}
-            r = await studio.call("POST", "/v1/images/generations", timeout=900, json=body)
-        png = base64.b64decode(r["data"][0]["b64_json"])
-        folder = Path((await studio.settings())["exports_dir"]) / "images"
-        folder.mkdir(parents=True, exist_ok=True)
-        stem = re.sub(r"[^a-z0-9]+", "-", prompt.lower()).strip("-")[:40] or "image"
-        path = folder / f"{dt.datetime.now():%Y-%m-%d_%H%M%S}_{stem}.png"
-        path.write_bytes(png)
-        return [json.dumps({"path": str(path), "seed": r["data"][0].get("seed"), "model": key or "default"}), preview(png)]
+            files = [(f"ref_{i}", (f"ref{i}.png", await studio.image_bytes(r))) for i, r in enumerate(references)]
+        r = await studio.call("POST", "/api/singles", data={"spec": json.dumps({"text": prompt, "settings": settings})},
+                              files=files or None)
+        batch_id, wanted = r["batch"]["id"], set(r["items"])
+        deadline = asyncio.get_running_loop().time() + 900
+        while True:
+            d = await studio.call("GET", f"/api/batches/{batch_id}")
+            mine = [it for it in d["items"] if it["id"] in wanted]
+            if all(it["status"] not in ("queued", "running") for it in mine):
+                break
+            if asyncio.get_running_loop().time() > deadline:
+                raise ValueError(f"Still generating after 15 minutes; check get_batch('{d['name']}') later.")
+            await asyncio.sleep(1)
+        out: list = []
+        info = []
+        for it in mine:
+            entry = {"batch": d["name"], "file": it["file"], "seed": it["seed"], "status": it["status"]}
+            if it["status"] == "done":
+                entry["path"] = str(Path(d["folder"]) / it["file"])
+                out.append(preview(await studio.call("GET", f"/api/batches/{batch_id}/files/{it['file']}")))
+            else:
+                entry["error"] = it.get("error")
+            info.append(entry)
+        return [json.dumps(info[0] if len(info) == 1 else info)] + out
 
     @mcp.tool()
     async def create_batch(prompts: list, name: str | None = None, preset: str | None = None,
@@ -305,15 +336,7 @@ def build(base: str, api_key, *, host_port: int | None = None) -> FastMCP:
                 raise ValueError("upscale must be '2x' or '4x', optionally followed by 'detailed'.")
             settings["upscale"] = {"factor": int(m[1]), "model": m[2] or "illustration"}
         if loras:
-            r = await studio.call("GET", "/api/loras")
-            out = []
-            for e in loras:
-                hit = next((l for l in r["items"] if l["name"].lower() == str(e.get("name", "")).lower()), None)
-                if not hit:
-                    raise ValueError(f"No LoRA called {e.get('name')!r}. Use list_loras.")
-                out.append({"id": hit["id"], "strength": e.get("strength", hit["strength"]),
-                            "use_triggers": e.get("use_triggers", True)})
-            settings["loras"] = out
+            settings["loras"] = await lora_settings(loras)
         if pinned_references:
             if len(pinned_references) > 4:
                 raise ValueError("Pin at most 4 reference images.")

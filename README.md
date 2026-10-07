@@ -66,7 +66,10 @@ the project folder.
 
 ## Using it
 
-- **Create** — type prompts (Enter adds a row, pasting several lines adds several), switch to *Paste text*,
+- **Single image** — Create → *Single image*: one prompt (Ctrl+Enter), up to 4 reference images, and the result
+  shown large. Single images are made right away, ahead of any running batch, and saved in one
+  `YYYY-MM-DD_Singles` batch per day, so the viewer, edits, upscaling and export work on them as usual.
+- **Create** — switch to *Batch* and type prompts (Enter adds a row, pasting several lines adds several), switch to *Paste text*,
   or *Import CSV / TXT* (TXT: one prompt per line; CSV: see below).
 - **Per-prompt options** — *Options* on a prompt sets its own size, images per prompt or seed; anything
   left on "Batch" uses the batch setting.
@@ -202,7 +205,7 @@ mcp_servers:
 | Tool | What it does |
 |---|---|
 | `list_models`, `list_presets`, `list_loras`, `list_references`, `get_settings` | What's available: models (with licence and whether they take references), presets, LoRAs, named references, folders |
-| `generate_image` | One image now, saved to the Exports folder; returns the path and a preview. With `references` the prompt can be an edit instruction ("make it night") |
+| `generate_image` | One image now (made next, ahead of queued batches), saved in today's Singles batch; returns the batch, file, path and a preview, so the other tools can edit, upscale or export it. With `references` the prompt can be an edit instruction ("make it night"); `images` makes up to 4 variants |
 | `create_batch` | A batch: prompts (or `{text, size, images, seed, reference}`), preset, style, size, images per prompt, model, seed, up to 4 `pinned_references`, LoRAs, `upscale` ("2x", "4x detailed") |
 | `list_batches`, `get_batch` | Status, progress and every image's path, seed and prompt (`batch` = id, name or `latest`) |
 | `wait_for_batch` | Waits until a batch (and its upscales) finishes, up to 30 min per call |
