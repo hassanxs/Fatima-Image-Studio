@@ -1899,7 +1899,8 @@ function renderModelList() {
     }
     return `<div class="model-row">
       <div class="model-info">
-        <strong>${esc(m.label)}</strong>
+        <div class="row" style="gap:10px;flex-wrap:wrap"><strong>${esc(m.label)}</strong>
+          <a class="text-btn red model-page" href="${esc(m.page)}" target="_blank" rel="noopener">Hugging Face page ↗</a></div>
         <p>${esc(m.about)}</p>
         <div class="model-tags">
           <span class="tag ${m.noncommercial ? 'bad' : 'ok'}">${esc(m.license)}</span>

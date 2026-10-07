@@ -273,6 +273,15 @@ def steps_for(cfg: dict, model: str) -> int:
     return int(cfg.get("steps") or 0) or MODELS[model]["steps"]
 
 
+def model_page(key: str) -> str:
+    """The model's own page: its gated page, else the Hugging Face repo its main file comes from."""
+    m = MODELS[key]
+    if m.get("gated"):
+        return m["gated"]
+    url = FILES[m.get("diffusion") or m["checkpoint"]][0]
+    return url.split("/resolve/")[0] if "/resolve/" in url else url
+
+
 def model_files(key: str) -> list[str]:
     m = MODELS[key]
     return [m[k] for k in FILE_ARGS if m.get(k)]

@@ -40,7 +40,7 @@ class Downloads:
                 "to_download": sum(config.FILES[f][1] for f in self.missing(key)),
                 "partial": self.partial_bytes(key),  # from disk, so a paused download survives a restart
                 "job": self.jobs.get(key),
-                "gated": m.get("gated"), "access": self.access_state(key),
+                "gated": m.get("gated"), "access": self.access_state(key), "page": config.model_page(key),
             })
         return out
 
