@@ -2275,6 +2275,45 @@ function renderUpdateBadge() {
   }
 }
 
+// ---------- Settings dropdown in the top bar (General | Setup) ----------
+// The menu floats outside the nav (the nav scrolls sideways on narrow windows and would clip it).
+(() => {
+  const link = document.querySelector('.nav a[data-view="settings"]');
+  const menu = $('settings-menu');
+  let hideTimer;
+  const place = () => {
+    const r = link.getBoundingClientRect();
+    menu.style.top = `${r.bottom + 6}px`;
+    menu.style.left = `${Math.max(8, Math.min(r.left, innerWidth - menu.offsetWidth - 8))}px`;
+  };
+  const open = () => {
+    if (S.locked) return;
+    clearTimeout(hideTimer);
+    menu.querySelectorAll('[data-sub]').forEach((a) =>
+      a.dataset.sub === S.view ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+    menu.hidden = false;
+    place();
+  };
+  const close = (delay = 150) => { clearTimeout(hideTimer); hideTimer = setTimeout(() => { menu.hidden = true; }, delay); };
+  link.addEventListener('mouseenter', open);
+  link.addEventListener('mouseleave', () => close());
+  menu.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+  menu.addEventListener('mouseleave', () => close());
+  link.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown') { e.preventDefault(); open(); menu.querySelector('a').focus(); } });
+  menu.addEventListener('keydown', (e) => {
+    const items = [...menu.querySelectorAll('a')], i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    if (e.key === 'Escape') { close(0); link.focus(); }
+  });
+  menu.addEventListener('click', () => close(0));
+  // Touch screens have no hover: the first tap on Settings opens the menu, a second tap follows the link.
+  link.addEventListener('touchstart', (e) => { if (menu.hidden && !S.locked) { e.preventDefault(); open(); } }, { passive: false });
+  document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target) && !link.contains(e.target)) close(0); });
+  addEventListener('resize', () => { if (!menu.hidden) place(); });
+  addEventListener('scroll', () => { if (!menu.hidden) place(); }, { passive: true });
+})();
+
 function renderMachine() {
   const e = S.state?.engine;
   if (!e || !S.settings) return;

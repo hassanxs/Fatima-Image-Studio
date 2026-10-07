@@ -21,8 +21,12 @@
     <a href="#models" data-view="models"><img class="on" src="icons/nav-models-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-models-off.svg" width="16" height="16" alt="">Models</a>
     <a href="#setup" data-view="setup"><img class="on" src="icons/nav-setup-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-setup-off.svg" width="16" height="16" alt="">Setup</a>
     <a href="#connect" data-view="connect"><img class="on" src="icons/nav-connect-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-connect-off.svg" width="16" height="16" alt="">Connect</a>
-    <a href="#settings" data-view="settings"><img class="on" src="icons/nav-settings-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-settings-off.svg" width="16" height="16" alt="">Settings</a>
+    <a href="#settings" data-view="settings"><img class="on" src="icons/nav-settings-on.svg" width="16" height="16" alt=""><img class="off" src="icons/nav-settings-off.svg" width="16" height="16" alt="">Settings<span class="nav-caret" aria-hidden="true">▾</span></a>
   </nav>
+  <div class="nav-menu" id="settings-menu" role="menu" aria-label="Settings sections" hidden>
+    <a href="#settings" role="menuitem" data-sub="settings">General<span>Defaults, folders, updates</span></a>
+    <a href="#setup" role="menuitem" data-sub="setup">Setup<span>Hardware, engine, models, speed test</span></a>
+  </div>
   <div class="engine">
     <div class="engine-state">
       <div class="engine-line"><span class="state-dot" id="engine-dot"><img src="icons/dot-standby.svg" width="6" height="6" alt=""></span><span id="engine-text">Connecting…</span></div>
