@@ -1,5 +1,7 @@
 # Fatima Image Studio
 
+[![Latest release](https://img.shields.io/github/v/release/hassanxs/Fatima-Image-Studio?label=release&color=de462b)](https://github.com/hassanxs/Fatima-Image-Studio/releases/latest) [![Build](https://img.shields.io/github/actions/workflow/status/hassanxs/Fatima-Image-Studio/release.yml?label=build)](https://github.com/hassanxs/Fatima-Image-Studio/actions/workflows/release.yml) [![Downloads](https://img.shields.io/github/downloads/hassanxs/Fatima-Image-Studio/total?color=d9f45c&labelColor=20221e)](https://github.com/hassanxs/Fatima-Image-Studio/releases) [![License: MIT](https://img.shields.io/github/license/hassanxs/Fatima-Image-Studio?color=20221e)](LICENSE) ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6) ![GPU](https://img.shields.io/badge/GPU-NVIDIA%20%7C%20AMD%20%7C%20Intel%20%7C%20CPU-555)
+
 Bulk image generation on your own Windows PC: type or paste many prompts, keep characters consistent with
 reference images, and get every batch in its own named, renamable folder. It runs FLUX.2 klein and Z-Image
 Turbo locally through the official [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
