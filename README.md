@@ -243,10 +243,6 @@ the person installing or operating it. It only goes online when you ask it to:
 Prompts, images and settings never leave your PC. The API and MCP server listen on `127.0.0.1` only and
 require the API key. Those download sites have their own privacy policies.
 
-## Code signing policy
-
-See [CODE_SIGNING.md](CODE_SIGNING.md).
-
 ## Licence
 
 MIT, see [`LICENSE`](LICENSE). Third-party software and the models the app can download keep their own
