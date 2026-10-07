@@ -6,6 +6,19 @@ Turbo locally through the official [stable-diffusion.cpp](https://github.com/lee
 engine: no cloud, no account, no per-image cost. It also works as an OpenAI-compatible image API and as an
 MCP server for AI agents (Claude Code, Codex, Antigravity, Hermes…).
 
+![Fatima Image Studio: a batch of product shots on the Create page](docs/screenshots/create.webp)
+
+## Screenshots
+
+| Batches | Setup |
+|---|---|
+| ![Batches page: every batch is a folder on disk](docs/screenshots/batches.webp) | ![Setup page: hardware check and recommended engine and model](docs/screenshots/setup.webp) |
+| **Models** | **Example output** |
+| ![Models page: models with their licences, upscalers and LoRAs](docs/screenshots/models.webp) | ![A storybook batch: 4 prompts × 2 images, one style, made in under a minute on an 8 GB laptop GPU](docs/screenshots/example-storybook.webp) |
+
+The example is one batch of four prompts with two images each and a shared watercolour style, made with
+FLUX.2 klein 4B in under a minute on a laptop RTX 5060 (8 GB).
+
 ## Download and install
 
 Get `FatimaImageStudio-Setup-<version>.exe` from the
@@ -16,6 +29,9 @@ the app downloads the ones that suit your PC on its **Setup** page, which opens 
 The installer isn't code-signed yet, so Windows SmartScreen may say "Windows protected your PC". Choose
 **More info → Run anyway**. Each release lists the installer's SHA-256, and the installer is built by GitHub
 Actions from the tagged source, so the code you see here is the code you install.
+
+**Uninstall** from Windows Settings → Apps → Installed apps → Fatima Image Studio. It asks whether to also
+delete the downloaded models, engine and settings; your images are always kept.
 
 **System requirements:** Windows 10 or 11 (64-bit). Best on an NVIDIA GeForce RTX / GTX 16-series or newer
 card with 6 GB or more; AMD and Intel cards work through Vulkan, and CPU-only works but takes minutes per
@@ -211,6 +227,34 @@ the Exports folder from Settings. Calls without the API key are rejected.
 See [`packaging/README.md`](packaging/README.md). In short, `packaging\build.ps1` stages the source with the
 official embeddable Python and the pinned packages in `packaging/requirements-lock.txt`, then Inno Setup packs
 it. Pushing a `v*` tag makes GitHub Actions build it and attach it to a release.
+
+## Privacy
+
+Fatima Image Studio runs entirely on your PC. It has no telemetry, no analytics and no account. This program
+will not transfer any information to other networked systems unless specifically requested by the user or
+the person installing or operating it. It only goes online when you ask it to:
+
+- downloading an engine build (from [GitHub](https://github.com/leejet/stable-diffusion.cpp/releases)),
+  a model, or an upscaler (from [Hugging Face](https://huggingface.co) and
+  [GitHub](https://github.com/xinntao/Real-ESRGAN/releases)), with the Download buttons;
+- importing a LoRA from a Hugging Face link you paste, or a reference image from a link you (or your AI agent)
+  give it.
+
+Prompts, images and settings never leave your PC. The API and MCP server listen on `127.0.0.1` only and
+require the API key. Those download sites have their own privacy policies.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by
+[SignPath Foundation](https://signpath.org) *(applied for; until it is approved, releases are unsigned)*.
+
+- Committers and reviewers: [Hassan (@hassanxs)](https://github.com/hassanxs)
+- Approvers: [Hassan (@hassanxs)](https://github.com/hassanxs)
+
+Every release is built by [GitHub Actions](.github/workflows/release.yml) from the tagged source in this
+repository, and each signing request is approved by hand. Only this project's own files are signed: the
+installer and `FatimaImageStudio.exe`. Bundled third-party components (Python and its packages) keep their
+publishers' own signatures, or none. Privacy: see [Privacy](#privacy) above.
 
 ## Licence
 
