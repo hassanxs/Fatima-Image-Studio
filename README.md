@@ -245,16 +245,7 @@ require the API key. Those download sites have their own privacy policies.
 
 ## Code signing policy
 
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by
-[SignPath Foundation](https://signpath.org) *(applied for; until it is approved, releases are unsigned)*.
-
-- Committers and reviewers: [Hassan (@hassanxs)](https://github.com/hassanxs)
-- Approvers: [Hassan (@hassanxs)](https://github.com/hassanxs)
-
-Every release is built by [GitHub Actions](.github/workflows/release.yml) from the tagged source in this
-repository, and each signing request is approved by hand. Only this project's own files are signed: the
-installer and `FatimaImageStudio.exe`. Bundled third-party components (Python and its packages) keep their
-publishers' own signatures, or none. Privacy: see [Privacy](#privacy) above.
+See [CODE_SIGNING.md](CODE_SIGNING.md).
 
 ## Licence
 

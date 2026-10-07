@@ -55,6 +55,6 @@ jobs:
 
           Built by GitHub Actions from this tag's source. Not code-signed yet: if SmartScreen warns, choose More info → Run anyway.
 
-          [Code signing policy](https://github.com/${{ github.repository }}#code-signing-policy) · [Privacy](https://github.com/${{ github.repository }}#privacy)
+          [Code signing policy](https://github.com/${{ github.repository }}/blob/main/CODE_SIGNING.md) · [Privacy](https://github.com/${{ github.repository }}#privacy)
           "@
           gh release create "${{ github.ref_name }}" dist\* --title "Fatima Image Studio ${{ github.ref_name }}" --notes "$notes" --generate-notes
