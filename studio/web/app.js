@@ -141,7 +141,8 @@ function renderRows() {
   promptList.querySelectorAll('textarea').forEach(grow);
   updateSummary();
 }
-const SIZE_OPTIONS = [...$('size').options].map((o) => [o.value, o.textContent]);
+const SIZE_OPTIONS = ['1024x1024', '768x768', '512x512', '1360x768', '768x1360', '1184x880', '880x1184', '1248x832', '832x1248',
+  '1568x672', '1536x1024', '1024x1536', '1920x1088', '1088x1920'].map((v) => [v, v.replace('x', ' × ')]);
 function optSummary(r) {
   return [r.size && r.size.replace('x', ' × '), r.per && `× ${r.per}`, r.seed !== '' && `seed ${r.seed}`].filter(Boolean).join(' · ');
 }
@@ -387,6 +388,91 @@ function parseCSV(text) {
   return rows;
 }
 
+// ---------- create: size (aspect ratio + resolution, or a custom width × height) ----------
+
+const RATIOS = [['1:1', 1, 1], ['16:9', 16, 9], ['9:16', 9, 16], ['4:3', 4, 3], ['3:4', 3, 4],
+                ['3:2', 3, 2], ['2:3', 2, 3], ['21:9', 21, 9]];
+const LEVELS = { s: 0.5, m: 1, l: 1.5 };  // megapixels
+const snap16 = (v) => Math.min(2048, Math.max(256, Math.round(v / 16) * 16));
+function sizeFor(rw, rh, mp) {
+  const area = mp * 1024 * 1024;
+  let w = Math.sqrt(area * rw / rh), h = w * rh / rw;
+  const k = Math.min(1, 2048 / Math.max(w, h));  // keep the long side within the engine's limit
+  return [snap16(w * k), snap16(h * k)];
+}
+S.size = { ratio: '1:1', level: 'm', auto: null };  // auto: [w, h] of the first reference image, when known
+function getSize() {
+  return [snap16(Number($('width').value) || 1024), snap16(Number($('height').value) || 1024)];
+}
+function applySize() {
+  const r = S.size.ratio;
+  if (r === 'auto' && S.size.auto) [$('width').value, $('height').value] = sizeFor(S.size.auto[0], S.size.auto[1], LEVELS[S.size.level]);
+  else if (r !== 'custom' && r !== 'auto') {
+    const [, rw, rh] = RATIOS.find((x) => x[0] === r);
+    [$('width').value, $('height').value] = sizeFor(rw, rh, LEVELS[S.size.level]);
+  }
+  renderSize();
+  updateSummary();
+}
+function renderSize() {
+  const hasRef = S.pins.length > 0;
+  if (S.size.ratio === 'auto' && !hasRef) S.size.ratio = '1:1';
+  const chips = RATIOS.map(([k]) => k).concat(hasRef ? ['auto'] : []);
+  setHtml($('ratios'), chips.map((k) => `<button type="button" data-ratio="${k}" aria-pressed="${S.size.ratio === k}"
+    ${k === 'auto' ? 'title="Keep the first reference image\'s shape"' : ''}>${k === 'auto' ? 'Auto' : k}</button>`).join(''));
+  $('size-level').querySelectorAll('[data-level]').forEach((b) =>
+    b.setAttribute('aria-pressed', S.size.ratio !== 'custom' && b.dataset.level === S.size.level));
+  const [w, h] = getSize();
+  $('size-mp').textContent = `${w} × ${h} · ${(w * h / 1e6).toFixed(1)} MP`;
+  $('size-help').textContent = S.size.ratio === 'auto' ? 'Auto keeps the first reference image\'s shape.'
+    : S.size.ratio === 'custom' ? 'Custom size: 256–2048, rounded to multiples of 16.'
+    : 'Pick a shape and a resolution, or type an exact width and height.';
+}
+$('ratios').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-ratio]');
+  if (!b) return;
+  S.size.ratio = b.dataset.ratio;
+  if (S.size.ratio === 'auto') S.size.auto = await imageSize(S.pins[0].file);
+  applySize();
+});
+$('size-level').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-level]');
+  if (!b) return;
+  S.size.level = b.dataset.level;
+  if (S.size.ratio === 'custom') {  // keep the custom shape, change its resolution
+    const [w, h] = getSize();
+    [$('width').value, $('height').value] = sizeFor(w, h, LEVELS[S.size.level]);
+    renderSize(); updateSummary(); return;
+  }
+  applySize();
+});
+for (const id of ['width', 'height']) {
+  $(id).addEventListener('input', () => { S.size.ratio = 'custom'; renderSize(); updateSummary(); });
+  $(id).addEventListener('change', () => { $(id).value = snap16(Number($(id).value) || 1024); renderSize(); updateSummary(); });
+}
+function imageSize(file) {
+  return new Promise((resolve) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { resolve([img.naturalWidth, img.naturalHeight]); URL.revokeObjectURL(url); };
+    img.onerror = () => { resolve([1, 1]); URL.revokeObjectURL(url); };
+    img.src = url;
+  });
+}
+function setSizeFromText(text, ratio, level) {  // presets: "1360x768" (+ the ratio and level they were made with)
+  const [w, h] = String(text || '').split('x').map(Number);
+  if (!w || !h) return;
+  $('width').value = snap16(w); $('height').value = snap16(h);
+  S.size.level = LEVELS[level] ? level : S.size.level;
+  S.size.ratio = ratio && (ratio === 'custom' || RATIOS.some((x) => x[0] === ratio)) ? ratio : 'custom';
+  if (!ratio) {  // older presets only stored the size: recognise a shape + resolution that makes it
+    for (const [k, rw, rh] of RATIOS) for (const [lv, mp] of Object.entries(LEVELS)) {
+      const [sw, sh] = sizeFor(rw, rh, mp);
+      if (sw === snap16(w) && sh === snap16(h)) { S.size.ratio = k; S.size.level = lv; }
+    }
+  }
+  renderSize();
+}
+
 // ---------- create: batch reference, settings, submit ----------
 
 // Pinned references: up to 4 images every prompt in the batch uses (character, setting, style…).
@@ -411,6 +497,9 @@ function renderPins() {
   $('pins-count').textContent = `${S.pins.length} / ${MAX_PINS}`;
   $('batch-ref').hidden = S.pins.length >= MAX_PINS;
   $('batch-ref-title').textContent = S.pins.length ? 'Add another image' : 'Drop images or browse';
+  if (S.size.ratio === 'auto' && S.pins.length) imageSize(S.pins[0].file).then((d) => { S.size.auto = d; applySize(); });
+  else if (S.size.ratio === 'auto') { S.size.ratio = '1:1'; applySize(); }  // its reference is gone
+  else renderSize();
 }
 $('pins').addEventListener('click', (e) => {
   const b = e.target.closest('[data-pin]');
@@ -428,7 +517,6 @@ dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('dr
 
 $('per-minus').addEventListener('click', () => { S.perPrompt = Math.max(1, S.perPrompt - 1); $('per-prompt').textContent = S.perPrompt; updateSummary(); });
 $('per-plus').addEventListener('click', () => { S.perPrompt = Math.min(8, S.perPrompt + 1); $('per-prompt').textContent = S.perPrompt; updateSummary(); });
-$('size').addEventListener('change', updateSummary);
 
 function renderModels() {
   const models = (S.state?.models || []).filter((m) => m.installed);
@@ -634,13 +722,14 @@ async function loadPresets(selectId) {
   $('preset-delete').hidden = !sel.value;
 }
 function currentValues() {
-  return { size: $('size').value, per_prompt: S.perPrompt, model: S.model, seed: $('seed').value.trim(),
+  return { size: getSize().join('x'), size_ratio: S.size.ratio === 'auto' ? 'custom' : S.size.ratio, size_level: S.size.level,
+           per_prompt: S.perPrompt, model: S.model, seed: $('seed').value.trim(),
            upscale: $('upscale').value, style_text: $('style').value.trim(), style_position: S.stylePos,
            loras: S.loraPicks.map((x) => ({ ...x })) };
 }
 async function applyPreset(p) {
   const v = p.values || {};
-  if (v.size && [...$('size').options].some((o) => o.value === v.size)) $('size').value = v.size;
+  if (v.size) setSizeFromText(v.size, v.size_ratio, v.size_level);
   if (v.per_prompt) { S.perPrompt = Number(v.per_prompt); $('per-prompt').textContent = S.perPrompt; }
   if (v.model && S.state?.models.some((m) => m.key === v.model && m.installed)) { S.model = v.model; renderModels(); renderHeader(); }
   $('seed').value = v.seed ?? '';
@@ -732,7 +821,7 @@ function secondsPerImage(w, h, model) {
 function updateSummary() {
   if (S.cmode === 'single') {
     const text = $('single-prompt').value.trim();
-    const [w, h] = $('size').value.split('x').map(Number);
+    const [w, h] = getSize();
     $('start-label').textContent = `Generate · ${plural(S.perPrompt, 'image')}`;
     $('start').disabled = !text;
     const busy = (S.state?.queue || []).length > 0;
@@ -747,7 +836,7 @@ function updateSummary() {
   let total = 0, seconds = 0;
   for (const r of rows) {
     const count = r.per ? Number(r.per) : S.perPrompt;
-    const [w, h] = (r.size || $('size').value).split('x').map(Number);
+    const [w, h] = r.size ? r.size.split('x').map(Number) : getSize();
     total += count;
     seconds += count * secondsPerImage(w, h, S.model);
   }
@@ -767,7 +856,7 @@ $('start').addEventListener('click', async () => {
   if (seedText && !/^\d{1,10}$/.test(seedText)) { toast('Seed must be a whole number (or leave it empty for random).'); return; }
   const badSeed = rows.findIndex((r) => r.seed !== '' && !/^\d{1,10}$/.test(String(r.seed)));
   if (badSeed >= 0) { toast(`Prompt ${badSeed + 1}: seed must be a whole number (or leave it empty).`); return; }
-  const [width, height] = $('size').value.split('x').map(Number);
+  const [width, height] = getSize();
   const form = new FormData();
   form.append('spec', JSON.stringify({
     name: $('batch-name').value.trim() || null,
@@ -1903,7 +1992,7 @@ async function startSingle() {
   if (!text) return;
   const seedText = $('seed').value.trim();
   if (seedText && !/^\d{1,10}$/.test(seedText)) { toast('Seed must be a whole number (or leave it empty for random).'); return; }
-  const [width, height] = $('size').value.split('x').map(Number);
+  const [width, height] = getSize();
   const form = new FormData();
   form.append('spec', JSON.stringify({
     text,
@@ -2081,6 +2170,7 @@ async function tick(force = false) {
 (async function init() {
   $('composer').dataset.cmode = S.cmode;
   $('create-mode').querySelectorAll('[data-cmode]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cmode === S.cmode));
+  renderSize();
   renderRows();
   showView();
   try { S.settings = await api('/api/settings'); } catch { /* shown by tick */ }

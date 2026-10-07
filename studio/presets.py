@@ -7,7 +7,7 @@ from . import config
 
 FILE = config.DATA / "presets.json"
 REFS = config.DATA / "presets"
-FIELDS = {"size", "per_prompt", "model", "seed", "upscale", "style_text", "style_position", "loras"}
+FIELDS = {"size", "size_ratio", "size_level", "per_prompt", "model", "seed", "upscale", "style_text", "style_position", "loras"}
 
 
 def load() -> list[dict]:
