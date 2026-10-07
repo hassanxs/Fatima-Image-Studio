@@ -352,6 +352,15 @@ h1 { margin: 0; font-size: clamp(38px, 5vw, 62px); line-height: 1; font-weight: 
 
 /* ---------- models ---------- */
 .models-panel.first { margin-top: 0; }
+/* ---------- updates ---------- */
+.updates-panel { flex: 1 1 360px; padding: 28px; display: flex; flex-direction: column; gap: 14px; min-width: 0; align-self: flex-start; }
+.upd-status { margin: 0; font-size: 14px; line-height: 1.5; }
+.upd-notes { max-height: 220px; overflow: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r);
+  font-size: 12px; line-height: 1.5; white-space: pre-wrap; color: var(--muted); }
+.upd-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.upd-progress { display: flex; flex-direction: column; gap: 6px; }
+.upd-progress .dl-track { width: 100%; }
+.nav a .badge { width: 7px; height: 7px; border-radius: 50%; background: var(--red); margin-left: -4px; align-self: flex-start; margin-top: 10px; }
 /* ---------- create: size ---------- */
 .ratios { display: flex; flex-wrap: wrap; gap: 6px; }
 .ratios button { height: 34px; min-width: 48px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r);

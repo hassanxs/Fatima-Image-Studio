@@ -30,6 +30,12 @@ The installer isn't code-signed yet, so Windows SmartScreen may say "Windows pro
 **More info → Run anyway**. Each release lists the installer's SHA-256, and the installer is built by GitHub
 Actions from the tagged source, so the code you see here is the code you install.
 
+**Updates:** the installed app checks GitHub for a new release when it starts and every 6 hours, and shows
+it under **Settings → General → Updates** (a dot on Settings and a short message tell you). Choose
+**Quick update** (a few hundred KB: only the app's own files) or **Full update** (the installer). Quick update is
+offered when the new version doesn't change the bundled Python or libraries. Both check the download's SHA-256,
+keep your models, settings and images, and restart the app by themselves. Automatic checking can be turned off there.
+
 **Uninstall** from Windows Settings → Apps → Installed apps → Fatima Image Studio. It asks whether to also
 delete the downloaded models, engine and settings; your images are always kept.
 

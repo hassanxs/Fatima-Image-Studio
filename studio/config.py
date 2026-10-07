@@ -49,6 +49,7 @@ DEFAULTS = {
     "default_model": "q4",
     "steps": 0,  # 0 = each model's own default
     "notify": True,
+    "check_updates": True,  # installed copies look for a newer GitHub release at start and every 6 hours
     "idle_unload_minutes": 10,
     "image_timeout_s": 600,
 }
@@ -154,7 +155,7 @@ def installed_upscalers(cfg: dict) -> list[str]:
 
 
 EDITABLE = {"batches_dir", "default_model", "steps", "idle_unload_minutes", "port", "api_key", "notify",
-            "exports_dir", "agent_read_dirs", "agents_noncommercial", "low_vram"}
+            "exports_dir", "agent_read_dirs", "agents_noncommercial", "low_vram", "check_updates"}
 
 
 def load() -> dict:

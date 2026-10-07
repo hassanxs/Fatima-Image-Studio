@@ -513,6 +513,23 @@
       </div>
     </form>
 
+    <section class="card updates-panel" aria-labelledby="upd-h">
+      <div class="row between"><h2 class="panel-title" id="upd-h">Updates</h2><span class="micro" id="upd-version"></span></div>
+      <p class="upd-status" id="upd-status">Not checked yet.</p>
+      <div class="upd-progress" id="upd-progress" hidden><div class="dl-track"><div></div></div><span class="micro" style="font-weight:400"></span></div>
+      <div class="upd-notes" id="upd-notes" hidden></div>
+      <div class="upd-actions" id="upd-actions">
+        <button type="button" class="btn red" id="upd-quick" hidden></button>
+        <button type="button" class="btn" id="upd-full" hidden></button>
+        <button type="button" class="btn" id="upd-check">Check for updates</button>
+      </div>
+      <p class="help" id="upd-help" style="font-size:12px;line-height:1.5"></p>
+      <label class="switch">
+        <input type="checkbox" id="set-check-updates">
+        <span class="switch-ui" aria-hidden="true"></span>
+        <span><strong>Check for updates automatically</strong><span class="help" style="display:block;font-size:12px">When the app starts and every 6 hours. Nothing is installed without you choosing it.</span></span>
+      </label>
+    </section>
   </div>
 
   <section class="machine" aria-label="This machine">

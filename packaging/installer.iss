@@ -57,6 +57,8 @@ Name: "{userstartup}\{#AppName}"; Filename: "{app}\{#AppExe}"; Parameters: "--tr
 
 [Run]
 Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Description: "Open {#AppName}"; Flags: nowait postinstall skipifsilent
+; The in-app updater runs this installer silently with /relaunch=1, so the app comes back by itself.
+Filename: "{app}\{#AppExe}"; Parameters: "--tray --no-browser"; WorkingDir: "{app}"; Flags: nowait; Check: ShouldRelaunch
 
 [UninstallDelete]
 Type: files; Name: "{userstartup}\{#AppName}.lnk"
@@ -78,6 +80,11 @@ begin
          ExpandConstant('{app}') + '\{#AppExe}'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"';
   Exec('powershell.exe', Cmd, '', SW_HIDE, ewWaitUntilTerminated, Code);
   Sleep(800);
+end;
+
+function ShouldRelaunch(): Boolean;
+begin
+  Result := ExpandConstant('{param:relaunch|0}') = '1';
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

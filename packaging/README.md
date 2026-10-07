@@ -24,6 +24,21 @@ The output is `dist\FatimaImageStudio-Setup-<version>.exe` plus a `.sha256` file
 `build\app`; `build\app\python\python.exe -m studio` runs it straight from there (as an installed copy, so
 its data goes to `%LOCALAPPDATA%\Fatima Image Studio`).
 
+## What a release contains
+
+| File | Used for |
+|---|---|
+| `FatimaImageStudio-Setup-<version>.exe` (+ `.sha256`) | New installs and the in-app **Full update** |
+| `FatimaImageStudio-app-<version>.zip` | The in-app **Quick update**: `studio\`, `studio_mcp.py` and the top-level docs |
+| `update.json` | What the updater reads: version, runtime fingerprint, and each file's size and SHA-256 |
+
+The **runtime fingerprint** is a SHA-256 over the Python version, `requirements-lock.txt`, the launcher, the
+installer script and `build.ps1`. Installed copies keep theirs in `runtime.txt`; a quick update is offered only
+when the release's fingerprint matches, so any packaging change automatically means a full update.
+
+To test the updater without publishing, add `"update_feed": "http://127.0.0.1:8765/latest.json"` to an installed
+copy's `data\config.json` and serve a GitHub-style release JSON (with `assets` pointing at local files) there.
+
 ## Release
 
 1. Set `__version__` in `studio/__init__.py` (e.g. `1.0.1`) and commit.

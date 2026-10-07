@@ -30,6 +30,15 @@ if ($LASTEXITCODE -ge 8) { throw "copying studio failed" }
 foreach ($f in "studio_mcp.py", "LICENSE", "THIRD_PARTY_NOTICES.md", "README.md") { Copy-Item "$Root\$f" $Stage }
 Set-Content "$Stage\installed" "Marks an installed copy: data lives in %LOCALAPPDATA%\Fatima Image Studio." -Encoding ascii
 
+# Runtime fingerprint: everything a quick update (app files only) can't change. Installed copies keep it in
+# runtime.txt; update.json carries the new one, and a quick update is offered only when they match.
+$fpText = $PyVersion + (@("packaging\requirements-lock.txt", "packaging\launcher\Launcher.cs",
+                          "packaging\installer.iss", "packaging\build.ps1") |
+                        ForEach-Object { (Get-Content -Raw "$Root\$_") -replace "`r`n", "`n" }) -join "`n"
+$fpBytes = [System.Text.Encoding]::UTF8.GetBytes($fpText)
+$Runtime = -join ([System.Security.Cryptography.SHA256]::Create().ComputeHash($fpBytes) | ForEach-Object { $_.ToString("x2") })
+Set-Content "$Stage\runtime.txt" $Runtime -Encoding ascii
+
 # 2. Official embeddable Python, checked against its SHA-256.
 $zip = Join-Path $Cache "python-$PyVersion-embed-amd64.zip"
 if (-not (Test-Path $zip)) {
@@ -100,3 +109,26 @@ $exe = Join-Path $Dist "FatimaImageStudio-Setup-$Version.exe"
 $sha = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
 Set-Content "$exe.sha256" "$sha  $(Split-Path -Leaf $exe)" -Encoding ascii
 Write-Host ("Built {0} ({1:N1} MB)`nSHA-256 {2}" -f $exe, ((Get-Item $exe).Length / 1MB), $sha)
+
+# 8. Quick-update package (the app's own files) and update.json, which the in-app updater reads.
+$appZip = Join-Path $Dist "FatimaImageStudio-app-$Version.zip"
+python -c @"
+import hashlib, json, os, sys, zipfile
+stage, app_zip, setup, version, runtime, out = sys.argv[1:7]
+with zipfile.ZipFile(app_zip, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+    for top in ('studio', 'studio_mcp.py', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md'):
+        path = os.path.join(stage, top)
+        if os.path.isfile(path):
+            z.write(path, top)
+            continue
+        for folder, dirs, files in os.walk(path):
+            dirs[:] = [d for d in dirs if d != '__pycache__']
+            for f in files:
+                full = os.path.join(folder, f)
+                z.write(full, os.path.relpath(full, stage))
+def info(p):
+    return {'file': os.path.basename(p), 'size': os.path.getsize(p), 'sha256': hashlib.sha256(open(p, 'rb').read()).hexdigest()}
+json.dump({'version': version, 'runtime': runtime, 'app': info(app_zip), 'full': info(setup)}, open(out, 'w'), indent=2)
+"@ $Stage $appZip $exe $Version $Runtime (Join-Path $Dist "update.json")
+if ($LASTEXITCODE -ne 0) { throw "update package failed" }
+Write-Host ("Quick update {0} ({1:N1} MB), update.json written" -f (Split-Path -Leaf $appZip), ((Get-Item $appZip).Length / 1MB))

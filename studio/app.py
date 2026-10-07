@@ -27,6 +27,7 @@ from . import APP_NAME, REPO_URL, __version__, config
 from .engine import Engine, EngineError
 from . import autostart, hardware, presets
 from .downloads import Downloads
+from .updater import Updater
 from .loras import Loras
 from .mcp_server import build as build_mcp
 from .references import References, pick_folder
@@ -47,6 +48,7 @@ def create_app(cfg: dict) -> FastAPI:
     engine = Engine(cfg)
     worker = Worker(store, engine, cfg)
     downloads = Downloads(cfg)
+    updater = Updater(cfg)
     loras = Loras(cfg)
     references = References()
     mcp = build_mcp(f"http://127.0.0.1:{cfg['port']}", lambda: cfg["api_key"], host_port=cfg["port"])
@@ -57,7 +59,8 @@ def create_app(cfg: dict) -> FastAPI:
             while True:
                 await asyncio.sleep(30)
                 await engine.unload_if_idle()
-        tasks = [asyncio.create_task(worker.run()), asyncio.create_task(idle_watch())]
+        tasks = [asyncio.create_task(worker.run()), asyncio.create_task(idle_watch()),
+                 asyncio.create_task(updater.watch())]
         log.info("Fatima Image Studio on http://%s:%s  (batches: %s)", cfg["host"], cfg["port"], store.root)
         async with mcp.session_manager.run():  # MCP endpoint for AI agents at /mcp
             yield
@@ -135,6 +138,7 @@ def create_app(cfg: dict) -> FastAPI:
                        for k, m in config.MODELS.items()],
             "default_model": cfg["default_model"],
             "setup_ready": cfg["engine"] in config.installed_engines(cfg) and cfg["default_model"] in installed,
+            "update": {"status": updater.state["status"], "latest": updater.state["latest"]},
             "upscalers": [{"key": k, "label": u["label"], "hint": u["hint"], "installed": k in config.installed_upscalers(cfg)}
                           for k, u in config.UPSCALERS.items()],
             "task": "upscale" if cur and (cur[1].get("upscale") or {}).get("status") == "running" else ("generate" if cur else None),
@@ -759,6 +763,24 @@ def create_app(cfg: dict) -> FastAPI:
         config.save(cfg)
         return setup_state()
 
+    # ---- updates ----------------------------------------------------------------
+
+    @app.get("/api/update")
+    def update_state():
+        return updater.state
+
+    @app.post("/api/update/check")
+    async def update_check():
+        return await updater.check()
+
+    @app.post("/api/update/{kind}")
+    async def update_apply(kind: str):
+        try:
+            updater.start(kind)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        return updater.state
+
     @app.get("/api/settings")
     def get_settings():
         return {k: cfg[k] for k in sorted(config.EDITABLE)} | {"engine_dir": str(config.engine_dir(cfg)),
@@ -787,7 +809,7 @@ def create_app(cfg: dict) -> FastAPI:
                 store.set_root(changes["batches_dir"])
             except OSError as e:
                 raise HTTPException(400, f"Can't use that folder: {e}")
-        for key in ("notify", "agents_noncommercial"):
+        for key in ("notify", "agents_noncommercial", "check_updates"):
             if key in changes:
                 changes[key] = bool(changes[key])
         if "exports_dir" in changes:

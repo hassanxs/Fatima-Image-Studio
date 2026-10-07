@@ -74,8 +74,13 @@ def main() -> None:
             server.should_exit = True
             thread.join(timeout=20)
 
-        Tray(cfg, stop_server).run()
+        tray = Tray(cfg, stop_server)
+        from . import updater
+        updater.request_exit = lambda: threading.Thread(target=tray.quit, daemon=True).start()
+        tray.run()
     else:
+        from . import updater
+        updater.request_exit = lambda: setattr(server, "should_exit", True)
         server.run()
 
 

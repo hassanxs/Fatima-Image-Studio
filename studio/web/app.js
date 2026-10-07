@@ -1706,6 +1706,7 @@ async function loadSettings() {
       if (el.type === 'checkbox') el.checked = Boolean(S.settings[el.name]); else el.value = S.settings[el.name];
     }
     $('set-key').value = S.settings.api_key;
+    loadUpdate();
     $('app-version').textContent = `VERSION ${S.settings.version}`;
     $('app-version').href = S.settings.repo_url;
     loadModels();
@@ -2178,6 +2179,101 @@ function setLocked(locked) {
   if (wasLocked && !locked) toast('Setup complete — everything is unlocked. Press Start creating to begin.', true);
 }
 
+// ---------- settings: updates ----------
+
+let UPD = null, updPoll = null;
+const fmtMB = (b) => `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB`;
+async function loadUpdate() {
+  try { UPD = await api('/api/update'); } catch { return; }
+  renderUpdate();
+}
+function renderUpdate() {
+  const u = UPD;
+  if (!u) return;
+  $('upd-version').textContent = `VERSION ${u.current}`;
+  const busy = ['downloading', 'applying', 'restarting'].includes(u.status);
+  const when = u.checked ? new Date(u.checked * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  $('upd-status').textContent = {
+    idle: 'Not checked yet.',
+    checking: 'Checking GitHub for a newer version…',
+    up_to_date: `You're up to date — version ${u.current}. Checked ${when}.`,
+    available: `Version ${u.latest} is available. You have ${u.current}.`,
+    manual: `Version ${u.latest} is available. Download its installer from the release page.`,
+    downloading: `Downloading version ${u.latest}…`,
+    applying: 'Installing…',
+    restarting: 'Installing — the app closes and opens again by itself. This page reloads when it’s back.',
+    error: u.error || 'Something went wrong.',
+  }[u.status] || u.status;
+  $('upd-status').classList.toggle('warn-text', u.status === 'error' || (u.status === 'available' && !!u.error));
+  if (u.status === 'available' && u.error) $('upd-status').textContent += ` ${u.error}`;
+  const p = u.progress;
+  $('upd-progress').hidden = u.status !== 'downloading' || !p;
+  if (p) {
+    $('upd-progress').querySelector('.dl-track div').style.width = `${p.total ? (p.done / p.total) * 100 : 0}%`;
+    $('upd-progress').querySelector('.micro').textContent = `${fmtMB(p.done)} of ${fmtMB(p.total)}`;
+  }
+  const showNotes = ['available', 'manual'].includes(u.status) && u.notes;
+  $('upd-notes').hidden = !showNotes;
+  if (showNotes) $('upd-notes').textContent = u.notes;
+  const offer = u.status === 'available';
+  $('upd-quick').hidden = !offer || !u.app;
+  $('upd-full').hidden = !offer || !u.full;
+  if (u.app) $('upd-quick').textContent = `Quick update · ${fmtMB(u.app.size)}`;
+  if (u.full) $('upd-full').textContent = `Full update · ${fmtMB(u.full.size)}`;
+  $('upd-quick').disabled = !u.installed || !u.quick_ok || busy;
+  $('upd-full').disabled = !u.installed || busy;
+  $('upd-check').disabled = busy || u.status === 'checking';
+  $('upd-help').textContent = !u.installed
+    ? 'This copy runs from source, so it updates with git pull. Checking still shows what the latest release is.'
+    : offer && !u.quick_ok ? 'This version changes the bundled runtime, so it needs the full update (the installer).'
+    : offer ? 'Quick update replaces only the app’s own files. Full update runs the installer. Both keep your models, settings and images, and restart the app.'
+    : '';
+  if (u.status === 'manual' && u.url) $('upd-help').innerHTML = `<a href="${esc(u.url)}" target="_blank" rel="noopener">Open the release page ↗</a>`;
+  $('set-check-updates').checked = S.settings?.check_updates !== false;
+}
+$('upd-check').addEventListener('click', async () => {
+  UPD = { ...(UPD || {}), status: 'checking' }; renderUpdate();
+  try { UPD = await api('/api/update/check', { method: 'POST' }); } catch (err) { toast(err.message); }
+  renderUpdate(); tick(true);
+});
+for (const [id, kind] of [['upd-quick', 'quick'], ['upd-full', 'full']]) {
+  $(id).addEventListener('click', async () => {
+    const running = (S.state?.queue || []).length;
+    if (!await confirmDialog(`Update to version ${UPD.latest}?`,
+      `The app closes, ${kind === 'quick' ? 'replaces its own files' : 'runs the installer'} and opens again by itself — about a minute.` +
+      (running ? ' Queued images carry on after the restart.' : '') + ' Your models, settings and images are kept.', 'Update now')) return;
+    try { UPD = await api(`/api/update/${kind}`, { method: 'POST' }); renderUpdate(); watchUpdate(); }
+    catch (err) { toast(err.message); }
+  });
+}
+function watchUpdate() {  // follow the download, then wait for the restarted app and reload into it
+  clearInterval(updPoll);
+  const target = UPD.latest;
+  updPoll = setInterval(async () => {
+    try {
+      const u = await api('/api/update');
+      if (u.current === target) { clearInterval(updPoll); toast(`Updated to version ${target}`, true); setTimeout(() => location.reload(), 800); return; }
+      UPD = u; renderUpdate();
+    } catch { UPD = { ...UPD, status: 'restarting' }; renderUpdate(); }  // the app is restarting
+  }, 1000);
+}
+$('set-check-updates').addEventListener('change', async (e) => {
+  try { S.settings = { ...S.settings, ...(await api('/api/settings', { method: 'PUT', json: { check_updates: e.target.checked } })) }; }
+  catch (err) { toast(err.message); }
+});
+let updToasted = false;
+function renderUpdateBadge() {
+  const available = S.state?.update?.status === 'available';
+  const link = document.querySelector('.nav a[data-view="settings"]');
+  let dot = link.querySelector('.badge');
+  if (available && !dot) { dot = document.createElement('span'); dot.className = 'badge'; dot.title = 'Update available'; link.append(dot); }
+  if (!available && dot) dot.remove();
+  if (available && !updToasted && !S.locked) {
+    updToasted = true;
+    toast(`Version ${S.state.update.latest} is available — Settings → General → Updates`, true);
+  }
+}
+
 function renderMachine() {
   const e = S.state?.engine;
   if (!e || !S.settings) return;
@@ -2259,6 +2355,7 @@ async function tick(force = false) {
     [S.state, S.batches] = await Promise.all([api('/api/state'), api('/api/batches')]);
     busy = S.state.queue.length > 0 || S.state.api_busy || S.state.engine.state === 'starting';
     setLocked(!S.state.setup_ready);
+    renderUpdateBadge();
     renderHeader();
     const installedSig = [...S.state.models, ...S.state.upscalers].filter((m) => m.installed).map((m) => m.key).join();
     if (installedSig !== S.modelsSig) { renderModels(); renderUpscalers(); renderLoraPicker(); }  // also after a download finishes
