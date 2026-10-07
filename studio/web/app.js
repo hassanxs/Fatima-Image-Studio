@@ -1869,6 +1869,14 @@ $('upscaler-list').addEventListener('click', async (e) => {
   } catch (err) { toast(err.message); }
 });
 const gb = (bytes) => bytes < 1e9 ? `${Math.max(1, Math.round(bytes / 1e6))} MB` : `${(bytes / 1e9).toFixed(1)} GB`;
+// Gated models: a token plus accepting the terms on Hugging Face. Returns markup that replaces Download, or ''.
+function gateBlock(m) {
+  if (!m.gated || m.installed || m.access === 'ok' || m.access === 'unknown') return '';
+  const link = `<a href="${esc(m.gated)}" target="_blank" rel="noopener">its Hugging Face page ↗</a>`;
+  return m.access === 'needs_token'
+    ? `<span class="help warn-text gate-note">Gated model: add your Hugging Face token in Settings → General → Downloads, then accept the terms on ${link}.</span>`
+    : `<span class="help warn-text gate-note">Your account hasn’t accepted this model’s terms yet. Accept them on ${link}, then come back — it unlocks within a few minutes.</span>`;
+}
 function renderModelList() {
   setHtml($('model-list'), MODEL_LIST.map((m) => {
     const job = m.job, busy = job?.status === 'downloading';
@@ -1881,6 +1889,8 @@ function renderModelList() {
       act = `<div class="dl-track"><div style="width:${job.total ? (job.done / job.total) * 100 : 0}%"></div></div>
         <span class="micro" style="font-weight:400">${gb(job.done)} of ${gb(job.total)}${job.method === 'xet' ? ' · Xet' : ''}</span>
         <button type="button" class="btn sm" data-model-act="cancel" data-key="${m.key}">Cancel</button>`;
+    } else if (gateBlock(m)) {
+      act = gateBlock(m);
     } else {
       const paused = m.partial > 0;
       act = (job?.status === 'failed' ? `<span class="help warn-text">${esc(job.error)}</span>` : '') +
@@ -1896,6 +1906,7 @@ function renderModelList() {
           <span class="tag">${gb(m.size)} on disk</span>
           <span class="tag">${m.steps} steps</span>
           <span class="tag">${m.refs ? 'Reference images ✓' : 'No reference images'}</span>
+          ${m.gated ? `<span class="tag">Gated · ${m.access === 'ok' ? 'access granted ✓' : 'needs terms + token'}</span>` : ''}
         </div>
       </div>
       <div class="model-act">${act}</div>
@@ -1999,6 +2010,7 @@ function renderSetup() {
     else if (m.default && m.installed) body = `<div class="choice-foot"><span class="micro">On this PC</span></div>`;
     else if (m.installed) body = `<div class="choice-foot"><span class="micro">On this PC</span>
         <button type="button" class="btn sm" data-setup="model:default" data-key="${m.key}">Make default</button></div>`;
+    else if (gateBlock(m)) body = gateBlock(m);
     else body = (job?.status === 'failed' ? `<span class="help warn-text">${esc(job.error)}</span>` : '') +
       `<div class="choice-foot"><span class="micro">${gb(m.to_download - m.partial)} download</span><span class="acts">` +
       (m.partial ? `<button type="button" class="text-btn red" data-setup="model:discard" data-key="${m.key}">Discard</button>` : '') +

@@ -601,7 +601,8 @@ def create_app(cfg: dict) -> FastAPI:
     # ---- model manager ------------------------------------------------------
 
     @app.get("/api/models")
-    def list_models():
+    async def list_models():
+        await downloads.check_access()  # which gated models the token can download (cached)
         return downloads.status()
 
     @app.post("/api/models/{key}/download")
@@ -703,9 +704,10 @@ def create_app(cfg: dict) -> FastAPI:
         }
 
     @app.get("/api/setup")
-    def get_setup(refresh: bool = False):
+    async def get_setup(refresh: bool = False):
+        await downloads.check_access()
         if refresh:
-            hardware.detect(refresh=True)
+            await asyncio.to_thread(hardware.detect, True)
         return setup_state()
 
     @app.post("/api/setup/engines/{key}/{action}")
@@ -830,6 +832,7 @@ def create_app(cfg: dict) -> FastAPI:
             if key in changes:
                 changes[key] = int(changes[key])
         if "hf_token" in body:  # set (checked with Hugging Face first) or cleared with ""
+            downloads.access.clear()
             new = str(body["hf_token"] or "").strip()
             if new:
                 try:

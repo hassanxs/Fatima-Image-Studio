@@ -69,6 +69,9 @@ These are not part of the installer. The app downloads them from their publisher
 | SDXL 1.0 | CreativeML OpenRAIL++-M | https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0 |
 | SDXL VAE fp16 fix | MIT | https://huggingface.co/madebyollin/sdxl-vae-fp16-fix |
 | Stable Diffusion 1.5 | CreativeML OpenRAIL-M | https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5 |
+| SD 3.5 Medium / Large / Large Turbo (gated) | Stability AI Community License | https://huggingface.co/stabilityai |
+| FLUX.1 dev (GGUF) | FLUX.1 [dev] Non-Commercial License | https://huggingface.co/black-forest-labs, GGUF by leejet |
+| Ideogram 4 (gated) | Ideogram 4 Non-Commercial License | https://huggingface.co/ideogram-ai/ideogram-4-fp8 |
 | FLUX.2 VAE, Z-Image VAE | per the model's licence | https://huggingface.co/Comfy-Org |
 | LoRAs you import | each LoRA's own licence | shown on its Hugging Face page |
 

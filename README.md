@@ -124,7 +124,11 @@ the project folder.
     Qwen-Image and Qwen-Image-Edit 2511 (Apache 2.0; text in images, editing and multi-reference characters;
     16 GB+ GPUs), Z-Image base and Chroma1-HD (Apache 2.0), FLUX.1 schnell (Apache 2.0; small GPUs),
     SDXL 1.0 and Stable Diffusion 1.5 (OpenRAIL; low-end PCs, huge LoRA ecosystem), and — non-commercial —
-    FLUX.1 Kontext dev (editing) and FLUX.2 dev (24 GB GPUs).
+    FLUX.1 Kontext dev (editing), FLUX.1 dev and FLUX.2 dev (24 GB GPUs).
+  - **Gated models** (need a Hugging Face token and accepting the model's terms once on its Hugging Face page):
+    SD 3.5 Medium / Large / Large Turbo (Stability AI Community License: commercial use OK under $1M yearly
+    revenue) and Ideogram 4 (non-commercial). The Models page shows whether your token has access and links
+    to the page to accept the terms.
 - **LoRAs** — *Models* page → *LoRA library*: paste a Hugging Face link (or upload a `.safetensors`). The app picks
   the right file, detects which base model it's for from its layer shapes, reads the trigger words and licence
   from the model card, and rewrites FLUX.2 layer names the engine would otherwise skip (without that, only

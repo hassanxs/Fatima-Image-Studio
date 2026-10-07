@@ -18,6 +18,7 @@ class Downloads:
         self.jobs: dict[str, dict] = {}  # model key -> {status, done, total, error}
         self._tasks: dict[str, asyncio.Task] = {}
         self.on_upscaler_installed = None  # callback: the engine reads the upscalers folder when it starts
+        self.access: dict[str, tuple[str, float]] = {}  # gated model -> ("ok" | "denied", when checked)
 
     @property
     def folder(self) -> Path:
@@ -39,12 +40,41 @@ class Downloads:
                 "to_download": sum(config.FILES[f][1] for f in self.missing(key)),
                 "partial": self.partial_bytes(key),  # from disk, so a paused download survives a restart
                 "job": self.jobs.get(key),
+                "gated": m.get("gated"), "access": self.access_state(key),
             })
         return out
 
     def partial_bytes(self, key: str) -> int:
         parts = (self.folder / (f + ".part") for f in self.missing(key))
         return sum(p.stat().st_size for p in parts if p.exists())
+
+    # ---- gated models (Hugging Face terms + token) ----
+
+    def access_state(self, key: str) -> str | None:
+        """None (not gated), "needs_token", "ok", "denied" or "unknown" (not checked yet)."""
+        if not config.MODELS[key].get("gated"):
+            return None
+        if not hf.token(self.cfg):
+            return "needs_token"
+        return (self.access.get(key) or ("unknown", 0))[0]
+
+    async def check_access(self) -> None:
+        """Ask Hugging Face whether the token may download each gated model (cached for 5 minutes)."""
+        import time
+        if not hf.token(self.cfg):
+            self.access.clear()
+            return
+        async with httpx.AsyncClient(follow_redirects=False, timeout=15) as client:
+            for key, m in config.MODELS.items():
+                if not m.get("gated") or time.time() - self.access.get(key, ("", 0))[1] < 300:
+                    continue
+                url = next(config.FILES[f][0] for f in config.model_files(key)
+                           if config.FILES[f][0].startswith(m["gated"] + "/"))
+                try:
+                    r = await client.head(url, headers=hf.headers(self.cfg, url))
+                    self.access[key] = ("denied" if r.status_code in (401, 403) else "ok", time.time())
+                except httpx.HTTPError:
+                    pass
 
     def start(self, key: str) -> None:
         if key not in config.MODELS:
@@ -80,6 +110,15 @@ class Downloads:
                 config.save(self.cfg)
         except asyncio.CancelledError:
             job["status"] = "cancelled"  # the .part file stays, so the next download resumes
+        except httpx.HTTPStatusError as e:
+            log.warning("Download of %s refused: %s", key, e)
+            page = config.MODELS[key].get("gated")
+            refused = e.response.status_code in (401, 403)
+            job.update(status="failed", error=(
+                f"Hugging Face refused the download. Accept the terms on {page} (with the account your token "
+                "belongs to), then try again." if refused and page else
+                "Hugging Face refused the download. Add your Hugging Face token in Settings." if refused else str(e)))
+            self.access.pop(key, None)
         except Exception as e:
             log.exception("Download of %s failed", key)
             job.update(status="failed", error=str(e) or e.__class__.__name__)

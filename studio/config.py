@@ -112,6 +112,15 @@ FILES = {
     "v1-5-pruned-emaonly.safetensors": (HF + "stable-diffusion-v1-5/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors", 4265146304),
     "flux2-dev-Q4_K_S.gguf": (HF + "city96/FLUX.2-dev-gguf/resolve/main/flux2-dev-Q4_K_S.gguf", 19299128288),
     "Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf": (HF + "unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF/resolve/main/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf", 14333922848),
+    # Gated on Hugging Face (accept the terms on the model's page; needs a token): SD 3.5, Ideogram 4
+    "sd3.5_medium.safetensors": (HF + "stabilityai/stable-diffusion-3.5-medium/resolve/main/sd3.5_medium.safetensors", 5107104286),
+    "sd3.5_large.safetensors": (HF + "stabilityai/stable-diffusion-3.5-large/resolve/main/sd3.5_large.safetensors", 16460379262),
+    "sd3.5_large_turbo.safetensors": (HF + "stabilityai/stable-diffusion-3.5-large-turbo/resolve/main/sd3.5_large_turbo.safetensors", 16460374454),
+    "clip_g.safetensors": (HF + "stabilityai/stable-diffusion-3.5-medium/resolve/main/text_encoders/clip_g.safetensors", 1389382176),
+    "ideogram4_fp8.safetensors": (HF + "ideogram-ai/ideogram-4-fp8/resolve/main/transformer/diffusion_pytorch_model.safetensors", 9289792888),
+    "ideogram4_uncond_fp8.safetensors": (HF + "ideogram-ai/ideogram-4-fp8/resolve/main/unconditional_transformer/diffusion_pytorch_model.safetensors", 9289792888),
+    # Public GGUF of FLUX.1 dev (the official repo is gated and 24 GB)
+    "flux1-dev-q4_0.gguf": (HF + "leejet/FLUX.1-dev-gguf/resolve/main/flux1-dev-q4_0.gguf", 6925526176),
 }
 
 _FLUX2 = ["--diffusion-fa", "--sage-attn", "--vae-conv-direct", "--cfg-scale", "1.0", "--sampling-method", "euler"]
@@ -199,16 +208,51 @@ MODELS = {
                  "license": "FLUX Non-Commercial — not for monetized or client work",
                  "about": "The 32B FLUX.2 with a 24B text encoder: top quality and reference images. Needs a 24 GB GPU "
                           "and 64 GB of RAM; far too big for 8–16 GB."},
+    "sd35m": {"label": "SD 3.5 Medium", "short": "SD 3.5 Medium · text & composition", "api_id": "sd3.5-medium",
+              "family": "sd3", "checkpoint": "sd3.5_medium.safetensors", "clip_l": "clip_l.safetensors",
+              "clip_g": "clip_g.safetensors", "t5xxl": "t5xxl_fp8_e4m3fn.safetensors", "steps": 28, "cfg": 4.5,
+              "speed": 6, "flags": [], "refs": False, "gated": HF + "stabilityai/stable-diffusion-3.5-medium",
+              "license": "Stability AI Community License — commercial use OK under $1M yearly revenue",
+              "about": "Stability's 2.5B model: good prompt following and text, runs on 8 GB GPUs. Needs a Hugging Face "
+                       "token and accepting its terms on Hugging Face."},
+    "sd35l": {"label": "SD 3.5 Large", "short": "SD 3.5 Large · best Stability quality", "api_id": "sd3.5-large",
+              "family": "sd3", "checkpoint": "sd3.5_large.safetensors", "clip_l": "clip_l.safetensors",
+              "clip_g": "clip_g.safetensors", "t5xxl": "t5xxl_fp8_e4m3fn.safetensors", "steps": 28, "cfg": 4.5,
+              "speed": 18, "flags": [], "refs": False, "gated": HF + "stabilityai/stable-diffusion-3.5-large",
+              "license": "Stability AI Community License — commercial use OK under $1M yearly revenue",
+              "about": "The 8B SD 3.5 at full precision: top Stability quality, for 16–24 GB GPUs. Needs a Hugging Face "
+                       "token and accepting its terms."},
+    "sd35lt": {"label": "SD 3.5 Large Turbo", "short": "SD 3.5 Large Turbo · 4 steps", "api_id": "sd3.5-large-turbo",
+               "family": "sd3", "checkpoint": "sd3.5_large_turbo.safetensors", "clip_l": "clip_l.safetensors",
+               "clip_g": "clip_g.safetensors", "t5xxl": "t5xxl_fp8_e4m3fn.safetensors", "steps": 4, "cfg": 1.0,
+               "speed": 4, "flags": [], "refs": False, "gated": HF + "stabilityai/stable-diffusion-3.5-large-turbo",
+               "license": "Stability AI Community License — commercial use OK under $1M yearly revenue",
+               "about": "SD 3.5 Large distilled to 4 steps: much faster, for 16–24 GB GPUs. Needs a Hugging Face token "
+                        "and accepting its terms."},
+    "flux1dev": {"label": "FLUX.1 dev · Q4", "short": "FLUX.1 dev · huge LoRA ecosystem", "api_id": "flux1-dev-q4",
+                 "family": "flux1", "diffusion": "flux1-dev-q4_0.gguf", "clip_l": "clip_l.safetensors",
+                 "t5xxl": "t5xxl_fp8_e4m3fn.safetensors", "vae": "ae.safetensors", "steps": 20, "speed": 8,
+                 "flags": ["--diffusion-fa"], "refs": False, "noncommercial": True,
+                 "license": "FLUX Non-Commercial — not for monetized or client work",
+                 "about": "The most popular FLUX for community LoRAs (styles, characters). Runs on 8 GB GPUs."},
+    "ideogram4": {"label": "Ideogram 4 · FP8", "short": "Ideogram 4 · typography & design", "api_id": "ideogram-4-fp8",
+                  "family": "ideogram4", "diffusion": "ideogram4_fp8.safetensors", "uncond": "ideogram4_uncond_fp8.safetensors",
+                  "llm": "Qwen3VL-8B-Instruct-Q4_K_M.gguf", "vae": "flux2-vae.safetensors", "steps": 20, "cfg": 7.0,
+                  "speed": 30, "flags": ["--diffusion-fa"], "refs": False, "noncommercial": True,
+                  "gated": HF + "ideogram-ai/ideogram-4-fp8", "license": "Ideogram 4 Non-Commercial License",
+                  "about": "Strong at typography, posters and layouts; prompts can be detailed JSON briefs. Two 9 GB "
+                           "models: for 16–24 GB GPUs. Needs a Hugging Face token and accepting its terms."},
 }
 
 
 # LoRAs only work on the base model they were trained for; models sharing a family can share LoRAs.
 FAMILIES = {"flux2-klein-4b": "FLUX.2 klein 4B", "flux2-klein-9b": "FLUX.2 klein 9B", "z-image": "Z-Image",
             "qwen-image-2.1": "Qwen-Image 2.1", "qwen-image": "Qwen-Image", "chroma": "Chroma", "flux1": "FLUX.1",
-            "sdxl": "SDXL", "sd15": "SD 1.5", "flux2-dev": "FLUX.2 dev"}
+            "sdxl": "SDXL", "sd15": "SD 1.5", "flux2-dev": "FLUX.2 dev", "sd3": "SD 3.5", "ideogram4": "Ideogram 4"}
 # Each model's files and the engine argument that loads them. "checkpoint" is a single all-in-one file
 # (SDXL, SD 1.5); the others are separate parts. Only the keys a model has are used.
-FILE_ARGS = {"checkpoint": "--model", "diffusion": "--diffusion-model", "llm": "--llm", "vision": "--llm_vision",
+FILE_ARGS = {"checkpoint": "--model", "diffusion": "--diffusion-model", "uncond": "--uncond-diffusion-model",
+             "llm": "--llm", "vision": "--llm_vision",
              "clip_l": "--clip_l", "clip_g": "--clip_g", "t5xxl": "--t5xxl", "vae": "--vae"}
 TEXT_PARTS = ("llm", "clip_l", "clip_g", "t5xxl")
 MAX_LORAS = 3  # per batch

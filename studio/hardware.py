@@ -133,7 +133,8 @@ def model_fit(key: str, hw: dict, engine: str) -> str:
     m = config.MODELS[key]
     gb = lambda f: config.FILES[f][1] / 1024**3
     text = sum(gb(m[k]) for k in config.TEXT_PARTS if m.get(k))
-    image = gb(m.get("diffusion") or m["checkpoint"]) + (gb(m["vae"]) if m.get("vae") else 0)
+    image = (gb(m.get("diffusion") or m["checkpoint"]) + (gb(m["uncond"]) if m.get("uncond") else 0)
+             + (gb(m["vae"]) if m.get("vae") else 0))
     peak = max(text, image) + 1.5  # + working memory at 1024²
     total = sum(gb(f) for f in config.model_files(key))
     if peak > vram + 2:
