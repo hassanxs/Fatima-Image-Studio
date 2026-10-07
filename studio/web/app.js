@@ -1499,6 +1499,78 @@ function confirmDialog(title, body, okLabel = 'Delete') {
 
 // ---------- batches ----------
 
+// ---------- batches: select several and delete them together ----------
+
+S.selecting = false;
+S.selected = new Set();
+S.batchesShown = [];
+const deletable = (b) => !isActive(b.status);
+function setSelecting(on) {
+  S.selecting = on;
+  if (!on) S.selected.clear();
+  $('select-toggle').setAttribute('aria-pressed', on);
+  $('select-toggle').textContent = on ? 'Cancel' : 'Select';
+  S.lastBatchesSig = '';
+  renderBatches();
+}
+function renderSelectBar(list) {
+  S.batchesShown = list;
+  const ids = new Set(S.batches.map((b) => b.id));
+  for (const id of [...S.selected]) if (!ids.has(id)) S.selected.delete(id);  // deleted or renamed away
+  $('select-bar').hidden = !S.selecting;
+  if (!S.selecting) return;
+  const picked = S.batches.filter((b) => S.selected.has(b.id));
+  const images = picked.reduce((n, b) => n + b.done, 0);
+  $('select-count').textContent = picked.length ? `${plural(picked.length, 'batch').replace('batchs', 'batches')} selected · ${plural(images, 'image')}` : 'Select batches to delete';
+  $('select-delete').disabled = !picked.length;
+  $('select-delete').textContent = picked.length ? `Delete ${picked.length}` : 'Delete selected';
+  const shownDeletable = list.filter(deletable);
+  $('select-all').disabled = !shownDeletable.length || shownDeletable.every((b) => S.selected.has(b.id));
+  $('select-none').disabled = !picked.length;
+}
+$('select-toggle').addEventListener('click', () => setSelecting(!S.selecting));
+$('select-done').addEventListener('click', () => setSelecting(false));
+$('select-all').addEventListener('click', () => {  // everything shown (respects the search), except running batches
+  S.batchesShown.filter(deletable).forEach((b) => S.selected.add(b.id));
+  S.lastBatchesSig = ''; renderBatches();
+});
+$('select-none').addEventListener('click', () => { S.selected.clear(); S.lastBatchesSig = ''; renderBatches(); });
+$('blist').addEventListener('change', (e) => {
+  const box = e.target.closest('[data-pick]');
+  if (!box) return;
+  box.checked ? S.selected.add(box.dataset.pick) : S.selected.delete(box.dataset.pick);
+  S.lastBatchesSig = ''; renderBatches();
+});
+$('blist').addEventListener('click', (e) => {  // in select mode, clicking a card's text area toggles it too
+  if (!S.selecting || e.target.closest('button, a, input, label, [data-name]')) return;
+  const card = e.target.closest('.bcard-info')?.closest('.bcard');
+  const b = card && S.batches.find((x) => x.id === card.dataset.id);
+  if (!b || !deletable(b)) return;
+  S.selected.has(b.id) ? S.selected.delete(b.id) : S.selected.add(b.id);
+  S.lastBatchesSig = ''; renderBatches();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && S.selecting && S.view === 'batches' && !document.querySelector('dialog[open]')) setSelecting(false);
+});
+$('select-delete').addEventListener('click', async () => {
+  const picked = S.batches.filter((b) => S.selected.has(b.id));
+  if (!picked.length) return;
+  const images = picked.reduce((n, b) => n + b.done, 0);
+  const names = picked.slice(0, 5).map((b) => `“${b.name}”`).join(', ') + (picked.length > 5 ? ` and ${picked.length - 5} more` : '');
+  if (!await confirmDialog(`Delete ${plural(picked.length, 'batch').replace('batchs', 'batches')}?`,
+    `${names} — ${plural(images, 'image')} in all. The folders go to the Recycle Bin, so you can restore them.`, 'Delete')) return;
+  $('select-delete').disabled = true;
+  try {
+    const r = await api('/api/batches-delete', { method: 'POST', json: { ids: picked.map((b) => b.id) } });
+    if (picked.some((b) => b.id === S.focusId)) { S.focusId = null; S.pinned = false; }
+    toast(r.skipped.length
+      ? `Deleted ${r.deleted.length}; ${r.skipped.length} skipped (${r.skipped.map((x) => `${x.name}: ${x.reason}`).join('; ')})`
+      : `Deleted ${plural(r.deleted.length, 'batch').replace('batchs', 'batches')} — they're in the Recycle Bin`, !r.skipped.length);
+    setSelecting(false);
+    await tick(true);
+  } catch (err) { toast(err.message); $('select-delete').disabled = false; }
+});
+
 function renderBatches() {
   if (S.view !== 'batches' || S.renaming) return;
   const q = $('search').value.trim().toLowerCase();
@@ -1506,11 +1578,12 @@ function renderBatches() {
   if (S.sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name));
   if (S.sort === 'most') list = [...list].sort((a, b) => b.total - a.total);
   // A running batch's elapsed time changes every poll; only redraw for it once a minute.
-  const sig = JSON.stringify([q, S.sort, list.map((b) => ({ ...b, elapsed_seconds: Math.floor((b.elapsed_seconds || 0) / 60) }))]);
+  const sig = JSON.stringify([q, S.sort, S.selecting, [...S.selected], list.map((b) => ({ ...b, elapsed_seconds: Math.floor((b.elapsed_seconds || 0) / 60) }))]);
   if (sig === S.lastBatchesSig) return;
   S.lastBatchesSig = sig;
 
   $('batch-total').textContent = `${plural(S.batches.length, 'batch').replace('batchs', 'batches')} on disk`;
+  renderSelectBar(list);
   $('image-total').textContent = `${S.batches.reduce((n, b) => n + b.done, 0)} images total`;
   if (!list.length) {
     $('blist').innerHTML = `<div class="card empty">${S.batches.length ? 'No batches match that search.' : 'No batches yet — create one on the Create page.'}</div>`;
@@ -1531,10 +1604,12 @@ function renderBatches() {
       : b.status === 'done' && !b.failed && !b.cancelled ? 'Finished · all prompts processed'
       : [b.failed && `${b.failed} failed`, b.cancelled && `${b.cancelled} cancelled`, b.remaining && `${b.remaining} waiting`].filter(Boolean).join(' · ');
     return `
-      <article class="card bcard" data-id="${b.id}">
+      <article class="card bcard${S.selecting ? ' picking' : ''}${S.selected.has(b.id) ? ' selected' : ''}" data-id="${b.id}">
         <div class="bcard-info">
           <div class="bcard-head">
-            <div class="bcard-id">
+            ${S.selecting ? `<label class="bpick" title="${isActive(b.status) ? 'Still generating — can\'t be deleted yet' : 'Select'}">
+              <input type="checkbox" data-pick="${b.id}" aria-label="Select ${esc(b.name)}" ${S.selected.has(b.id) ? 'checked' : ''} ${isActive(b.status) ? 'disabled' : ''}></label>` : ''}
+            <div class="bcard-id" style="flex:1">
               <div class="row"><span class="micro">${fmtWhen(b.created, ' / ').toUpperCase()}</span>${statusChip(b)}</div>
               <div class="bcard-name" data-name>
                 <h2>${esc(b.name)}</h2>

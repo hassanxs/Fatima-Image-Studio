@@ -354,17 +354,40 @@ def create_app(cfg: dict) -> FastAPI:
         store.save(b)
         return summarize(b)
 
+    def remove_batch(b: dict) -> None:
+        if worker.is_busy_with(b) or batch_status(b) in ("running", "queued"):
+            raise ValueError("still generating — cancel it first")
+        store.delete(b)  # to the Recycle Bin
+        shutil.rmtree(THUMBS / b["id"], ignore_errors=True)
+
     @app.delete("/api/batches/{batch_id}")
     def delete_batch(batch_id: str):
         b = get_batch(batch_id)
-        if worker.is_busy_with(b) or batch_status(b) in ("running", "queued"):
-            raise HTTPException(409, "This batch is still generating. Cancel it first, then delete it.")
         try:
-            store.delete(b)
+            remove_batch(b)
+        except ValueError:
+            raise HTTPException(409, "This batch is still generating. Cancel it first, then delete it.")
         except OSError as e:
             raise HTTPException(409, str(e))
-        shutil.rmtree(THUMBS / b["id"], ignore_errors=True)
         return {"deleted": b["name"]}
+
+    class BulkDelete(BaseModel):
+        ids: list[str] = Field(min_length=1, max_length=1000)
+
+    @app.post("/api/batches-delete")
+    def delete_batches(body: BulkDelete):
+        """Delete several batches at once; ones still generating (or locked by Windows) are skipped."""
+        deleted, skipped = [], []
+        for batch_id in dict.fromkeys(body.ids):
+            b = store.batches.get(batch_id)
+            if not b:
+                continue
+            try:
+                remove_batch(b)
+                deleted.append(b["name"])
+            except (ValueError, OSError) as e:
+                skipped.append({"name": b["name"], "reason": str(e)})
+        return {"deleted": deleted, "skipped": skipped}
 
     def get_item(b: dict, item_id: str) -> dict:
         it = next((it for it in b["items"] if it["id"] == item_id), None)

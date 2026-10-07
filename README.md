@@ -111,7 +111,8 @@ the project folder.
   Files live in `models\loras\`, details in `data\loras.json`; files dropped into the folder are picked up.
 - **Viewer** — click any image: ← → to browse, regenerate it (same or new seed; the new image replaces the file),
   copy its prompt, or delete it.
-- **Batches** — every past batch, with View, Open folder, Re-run, Copy prompts and Delete.
+- **Batches** — every past batch, with View, Open folder, Re-run, Copy prompts and Delete. *Select* lets you tick
+  several (or *Select all* of those shown, e.g. after a search) and delete them together.
 - **Deleting** — batches and single images go to the Windows Recycle Bin, so they can be restored.
 
 CSV columns (header row, any order; only `prompt` is required):

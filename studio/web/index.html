@@ -237,6 +237,16 @@
         <input id="search" placeholder="Search names and first prompts" autocomplete="off">
       </label>
       <button type="button" class="btn" id="sort"><img src="icons/sort.svg" width="18" height="18" alt=""><span id="sort-label">Newest first</span></button>
+      <button type="button" class="btn" id="select-toggle" aria-pressed="false">Select</button>
+    </div>
+  </div>
+  <div class="select-bar" id="select-bar" hidden>
+    <span id="select-count">0 selected</span>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <button type="button" class="btn dark sm" id="select-all">Select all</button>
+      <button type="button" class="btn dark sm" id="select-none">Clear</button>
+      <button type="button" class="btn red sm" id="select-delete" disabled>Delete selected</button>
+      <button type="button" class="btn lime sm" id="select-done">Done</button>
     </div>
   </div>
   <div class="blist" id="blist"></div>
