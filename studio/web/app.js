@@ -394,6 +394,7 @@ const RATIOS = [['1:1', 1, 1], ['16:9', 16, 9], ['9:16', 9, 16], ['4:3', 4, 3], 
                 ['3:2', 3, 2], ['2:3', 2, 3], ['21:9', 21, 9]];
 const LEVELS = { s: 0.5, m: 1, l: 1.5 };  // megapixels
 const snap16 = (v) => Math.min(2048, Math.max(256, Math.round(v / 16) * 16));
+const clampSide = (v) => Math.min(2048, Math.max(256, Math.round(v)));  // typed sizes: any value 256–2048
 function sizeFor(rw, rh, mp) {
   const area = mp * 1024 * 1024;
   let w = Math.sqrt(area * rw / rh), h = w * rh / rw;
@@ -402,7 +403,7 @@ function sizeFor(rw, rh, mp) {
 }
 S.size = { ratio: '1:1', level: 'm', auto: null };  // auto: [w, h] of the first reference image, when known
 function getSize() {
-  return [snap16(Number($('width').value) || 1024), snap16(Number($('height').value) || 1024)];
+  return [clampSide(Number($('width').value) || 1024), clampSide(Number($('height').value) || 1024)];
 }
 function applySize() {
   const r = S.size.ratio;
@@ -425,7 +426,7 @@ function renderSize() {
   const [w, h] = getSize();
   $('size-mp').textContent = `${w} × ${h} · ${(w * h / 1e6).toFixed(1)} MP`;
   $('size-help').textContent = S.size.ratio === 'auto' ? 'Auto keeps the first reference image\'s shape.'
-    : S.size.ratio === 'custom' ? 'Custom size: 256–2048, rounded to multiples of 16.'
+    : S.size.ratio === 'custom' ? 'Custom size, 256–2048 on each side. Sizes like 1920 × 1080 are made slightly larger and trimmed to fit exactly.'
     : 'Pick a shape and a resolution, or type an exact width and height.';
 }
 $('ratios').addEventListener('click', async (e) => {
@@ -448,7 +449,7 @@ $('size-level').addEventListener('click', (e) => {
 });
 for (const id of ['width', 'height']) {
   $(id).addEventListener('input', () => { S.size.ratio = 'custom'; renderSize(); updateSummary(); });
-  $(id).addEventListener('change', () => { $(id).value = snap16(Number($(id).value) || 1024); renderSize(); updateSummary(); });
+  $(id).addEventListener('change', () => { $(id).value = clampSide(Number($(id).value) || 1024); renderSize(); updateSummary(); });
 }
 function imageSize(file) {
   return new Promise((resolve) => {
@@ -461,13 +462,13 @@ function imageSize(file) {
 function setSizeFromText(text, ratio, level) {  // presets: "1360x768" (+ the ratio and level they were made with)
   const [w, h] = String(text || '').split('x').map(Number);
   if (!w || !h) return;
-  $('width').value = snap16(w); $('height').value = snap16(h);
+  $('width').value = clampSide(w); $('height').value = clampSide(h);
   S.size.level = LEVELS[level] ? level : S.size.level;
   S.size.ratio = ratio && (ratio === 'custom' || RATIOS.some((x) => x[0] === ratio)) ? ratio : 'custom';
   if (!ratio) {  // older presets only stored the size: recognise a shape + resolution that makes it
     for (const [k, rw, rh] of RATIOS) for (const [lv, mp] of Object.entries(LEVELS)) {
       const [sw, sh] = sizeFor(rw, rh, mp);
-      if (sw === snap16(w) && sh === snap16(h)) { S.size.ratio = k; S.size.level = lv; }
+      if (sw === clampSide(w) && sh === clampSide(h)) { S.size.ratio = k; S.size.level = lv; }
     }
   }
   renderSize();

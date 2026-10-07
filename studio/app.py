@@ -935,8 +935,8 @@ def create_app(cfg: dict) -> FastAPI:
             w, h = (int(v) for v in size.lower().split("x"))
         except ValueError:
             raise HTTPException(400, "size must be 'WIDTHxHEIGHT' or 'auto'")
-        if w % 16 or h % 16 or not (256 <= w <= 2048 and 256 <= h <= 2048):
-            raise HTTPException(400, "size must use multiples of 16 between 256 and 2048")
+        if not (256 <= w <= 2048 and 256 <= h <= 2048):
+            raise HTTPException(400, "size must be between 256 and 2048 on each side")
         return w, h
 
     async def run_api(n: int, response_format: str, seed: int | None, **params) -> dict:
@@ -1087,8 +1087,8 @@ def check_size(width, height, where: str = "") -> tuple[int, int]:
         w, h = int(width), int(height)
     except (TypeError, ValueError):
         raise HTTPException(400, f"{where}size needs both a width and a height.")
-    if w % 16 or h % 16 or not (256 <= w <= 2048 and 256 <= h <= 2048):
-        raise HTTPException(400, f"{where}width and height must be multiples of 16 between 256 and 2048.")
+    if not (256 <= w <= 2048 and 256 <= h <= 2048):
+        raise HTTPException(400, f"{where}width and height must be between 256 and 2048.")
     return w, h
 
 

@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 import httpx
+from PIL import Image
 
 from . import config, hardware
 
@@ -27,6 +28,30 @@ class EngineError(Exception):
 
 class Cancelled(Exception):
     pass
+
+
+def _up16(n: int) -> int:
+    return min(2048, -(-int(n) // 16) * 16)
+
+
+def _pad(png: bytes | None, w: int, h: int) -> bytes | None:
+    """Centre an image on a w×h canvas whose edges continue the image (a stretched copy behind it)."""
+    if png is None:
+        return None
+    img = Image.open(io.BytesIO(png))
+    canvas = img.resize((w, h), Image.LANCZOS)
+    canvas.paste(img, ((w - img.width) // 2, (h - img.height) // 2))
+    out = io.BytesIO()
+    canvas.save(out, "PNG")
+    return out.getvalue()
+
+
+def _trim(png: bytes, w: int, h: int) -> bytes:
+    img = Image.open(io.BytesIO(png))
+    left, top = (img.width - w) // 2, (img.height - h) // 2
+    out = io.BytesIO()
+    img.crop((left, top, left + w, top + h)).save(out, "PNG")
+    return out.getvalue()
 
 
 class Engine:
@@ -167,7 +192,16 @@ class Engine:
                        steps: int, refs: list[bytes] = (), init: bytes | None = None,
                        mask: bytes | None = None, strength: float = 0.75, loras: list[dict] = ()) -> bytes:
         """Generate one image and return its PNG bytes. `init` (+ optional `mask`) does
-        image-to-image / inpainting; `refs` are reference images."""
+        image-to-image / inpainting; `refs` are reference images.
+
+        The engine only makes sizes in multiples of 16, so any other size (e.g. 1920x1080) is made a
+        little larger (1920x1088) and trimmed evenly back to the exact size asked for."""
+        gw, gh = _up16(width), _up16(height)
+        if (gw, gh) != (width, height):
+            init, mask = _pad(init, gw, gh), _pad(mask, gw, gh)
+            png = await self.generate(model, prompt=prompt, width=gw, height=gh, seed=seed, steps=steps, refs=refs,
+                                      init=init, mask=mask, strength=strength, loras=loras)
+            return _trim(png, width, height)
         async with self._lock:
             self._cancel = False
             await self._ensure(model)
@@ -182,6 +216,9 @@ class Engine:
                                   "guidance": {"txt_cfg": 1.0}},
                 "output_format": "png",
             }
+            if init and width * height > 1_200_000:
+                # Encoding a large source image (vary / inpaint) doesn't fit in 8 GB at once; tile the VAE.
+                body["vae_tiling_params"] = {"enabled": True}
             self.state, self.phase, self.step, self.steps = "busy", "encoding", 0, steps
             try:
                 async with httpx.AsyncClient(timeout=30) as client:
@@ -266,7 +303,6 @@ class Engine:
 
 
 def _downscale(png: bytes, by: int) -> bytes:
-    from PIL import Image
     img = Image.open(io.BytesIO(png))
     img = img.resize((img.width // by, img.height // by), Image.LANCZOS)
     out = io.BytesIO()
