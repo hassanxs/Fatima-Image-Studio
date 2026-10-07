@@ -36,6 +36,16 @@ img { display: block; }
 .nav a .on, .nav a[aria-current="page"] .off { display: none; }
 .nav a[aria-current="page"] { background: var(--paper); color: var(--ink); }
 .nav a[aria-current="page"] .on { display: block; }
+/* Setup lives under Settings; on a fresh install it's the only page until an engine and a model are in. */
+.nav a[data-view="setup"] { display: none; }
+body.locked .nav a[data-view="setup"] { display: inline-flex; }
+body.locked .nav a:not([data-view="setup"]) { opacity: .35; pointer-events: none; cursor: default; }
+body.locked .subnav { display: none; }
+.subnav { display: flex; gap: 28px; border-bottom: 1px solid var(--line); margin: -6px 0 24px; }
+.subnav a { padding: 10px 0; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--muted);
+  font-weight: 600; font-size: 14px; text-decoration: none; }
+.subnav a:hover { color: var(--ink); }
+.subnav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--red); }
 .engine { flex: 1 1 auto; display: flex; align-items: center; justify-content: flex-end; gap: 16px; min-width: 0; }
 .engine-state { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
 #engine-text { overflow: hidden; text-overflow: ellipsis; }

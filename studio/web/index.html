@@ -291,11 +291,15 @@
 <main class="page" id="view-setup" hidden>
   <div class="page-head">
     <div>
-      <div class="title-row"><h1>Set up this PC.</h1><span class="kicker">SETUP</span></div>
+      <div class="title-row"><h1>Set up this PC.</h1><span class="kicker" id="setup-kicker">SETTINGS / SETUP</span></div>
       <p class="lede">Checks your hardware, then picks the engine and model that run best on it.</p>
     </div>
     <div class="note"><img src="icons/monitor.svg" width="18" height="18" alt="">DETECTED ON THIS PC</div>
   </div>
+  <nav class="subnav" aria-label="Settings sections">
+    <a href="#settings">General</a>
+    <a href="#setup" aria-current="page">Setup</a>
+  </nav>
 
   <section class="card models-panel first" aria-labelledby="hw-h">
     <div class="row between"><h2 class="panel-title" id="hw-h">This computer</h2>
@@ -425,6 +429,10 @@
     </div>
     <div class="note"><img src="icons/monitor.svg" width="18" height="18" alt=""><a id="app-version" target="_blank" rel="noopener" style="color:inherit">THIS MACHINE ONLY</a></div>
   </div>
+  <nav class="subnav" aria-label="Settings sections">
+    <a href="#settings" aria-current="page">General</a>
+    <a href="#setup">Setup</a>
+  </nav>
 
   <div class="panels">
     <form class="card gen-panel" id="settings-form">

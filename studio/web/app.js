@@ -99,10 +99,13 @@ function statusChip(b) {
 function showView() {
   const v = (location.hash || '#create').slice(1);
   const VIEWS = ['create', 'batches', 'models', 'setup', 'connect', 'settings'];
-  S.view = VIEWS.includes(v) ? v : 'create';
+  S.view = S.locked ? 'setup' : VIEWS.includes(v) ? v : 'create';  // fresh install: Setup only
+  if (S.locked && v !== 'setup') history.replaceState(null, '', '#setup');
   for (const name of VIEWS) $(`view-${name}`).hidden = name !== S.view;
+  // Setup is a section of Settings, so Settings stays highlighted there (except while setup is locked in).
+  const navView = S.view === 'setup' && !S.locked ? 'settings' : S.view;
   document.querySelectorAll('.nav a').forEach((a) =>
-    a.dataset.view === S.view ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+    a.dataset.view === navView ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
   if (S.view === 'batches') { S.lastBatchesSig = ''; renderBatches(); }
   if (['settings', 'connect', 'models'].includes(S.view)) loadSettings();
   if (S.view === 'models') loadLoras();
@@ -2060,6 +2063,21 @@ $('single-hero').addEventListener('click', async (e) => {
   }
 });
 
+// Fresh install: everything but Setup is locked until an engine and a model are installed.
+function setLocked(locked) {
+  if (locked === S.locked) return;
+  const wasLocked = S.locked;
+  S.locked = locked;
+  document.body.classList.toggle('locked', locked);
+  document.querySelectorAll('.nav a:not([data-view="setup"])').forEach((a) => {
+    if (locked) { a.setAttribute('aria-disabled', 'true'); a.setAttribute('tabindex', '-1'); a.title = 'Finish setup first'; }
+    else { a.removeAttribute('aria-disabled'); a.removeAttribute('tabindex'); a.title = ''; }
+  });
+  $('setup-kicker').textContent = locked ? 'FIRST RUN' : 'SETTINGS / SETUP';
+  if (locked || S.view === 'setup') showView();
+  if (wasLocked && !locked) toast('Setup complete — everything is unlocked. Press Start creating to begin.', true);
+}
+
 function renderMachine() {
   const e = S.state?.engine;
   if (!e || !S.settings) return;
@@ -2093,7 +2111,7 @@ function renderHeader() {
     : `${e.gpu} · ${{ stopped: 'loads on first image', starting: 'loading model…', ready: 'model loaded', busy: 'generating' }[e.state]}`;
   $('engine-sub').title = e.error || '';
   $('engine-dot').className = 'state-dot ' + e.state;
-  if (!S.state.setup_ready && e.state === 'stopped') {  // fresh install: nothing to load yet
+  if (!S.state.setup_ready && e.state !== 'busy') {  // fresh install: nothing to load yet
     $('engine-text').textContent = 'SETUP NEEDED';
     $('engine-sub').textContent = 'Download an engine and a model on the Setup page';
     $('engine-btn').hidden = false;
@@ -2105,7 +2123,8 @@ function renderHeader() {
 
   // Load / unload: loads the model picked on the Create form (or swaps to it).
   const btn = $('engine-btn');
-  const want = S.model || S.state.default_model;
+  const installed = (k) => S.state.models.some((m) => m.key === k && m.installed);
+  const want = installed(S.model) ? S.model : S.state.default_model;
   const working = e.state === 'busy' || e.state === 'starting' || S.state.queue.some((id) => S.batches.find((b) => b.id === id)?.status !== 'paused');
   btn.hidden = false;
   let text;
@@ -2139,6 +2158,7 @@ async function tick(force = false) {
   try {
     [S.state, S.batches] = await Promise.all([api('/api/state'), api('/api/batches')]);
     busy = S.state.queue.length > 0 || S.state.api_busy || S.state.engine.state === 'starting';
+    setLocked(!S.state.setup_ready);
     renderHeader();
     const installedSig = [...S.state.models, ...S.state.upscalers].filter((m) => m.installed).map((m) => m.key).join();
     if (installedSig !== S.modelsSig) { renderModels(); renderUpscalers(); renderLoraPicker(); }  // also after a download finishes
@@ -2178,6 +2198,5 @@ async function tick(force = false) {
   loadPresets();
   loadLoras();
   await tick(true);
-  await loadSetup();  // first run: go to Setup until an engine and a model are installed
-  if (SETUP && !SETUP.ready && ['', '#create'].includes(location.hash)) location.hash = '#setup';
+  await loadSetup();
 })();

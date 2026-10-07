@@ -48,7 +48,8 @@ The dot on the tray icon shows the engine: none = standby, lime = model loaded, 
 **Setup** checks the GPU, its memory, RAM, CPU and free disk, warns about problems (old NVIDIA driver, little
 memory, running on battery), and downloads the engine build and model that suit this PC, each marked
 *Recommended*, with how well every model fits the GPU. It also has *Low-memory mode* (Auto turns it on below
-6 GB of GPU memory) and a speed test.
+6 GB of GPU memory) and a speed test. On a fresh install it's the only page until an engine and a model are installed; after
+that it lives under **Settings → Setup**.
 
 ### Run from source
 
