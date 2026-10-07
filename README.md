@@ -40,6 +40,11 @@ it under **Settings → General → Updates** (a dot on Settings and a short mes
 offered when the new version doesn't change the bundled Python or libraries. Both check the download's SHA-256,
 keep your models, settings and images, and restart the app by themselves. Automatic checking can be turned off there.
 
+**Hugging Face token (optional):** add a free *Read* token from huggingface.co/settings/tokens under
+**Settings → General → Downloads** (or on the Setup page). With it, models download through Hugging Face's
+faster Xet transfer (falling back to a normal download if that fails), with higher download limits. Without
+it, everything works as before. The token stays on your PC and is only sent to huggingface.co.
+
 **Uninstall** from Windows Settings → Apps → Installed apps → Fatima Image Studio. It asks whether to also
 delete the downloaded models, engine and settings; your images are always kept.
 

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from . import config
+from . import config, hf
 
 log = logging.getLogger("studio.downloads")
 
@@ -85,9 +85,26 @@ class Downloads:
             job.update(status="failed", error=str(e) or e.__class__.__name__)
 
     async def _fetch(self, client: httpx.AsyncClient, url: str, size: int, final: Path, job: dict) -> None:
+        if hf.use_xet(self.cfg, url) and not final.with_name(final.name + ".part").exists():
+            base = job["done"]
+            job["method"] = "xet"
+            try:
+                await hf.xet_download(self.cfg, url, final, lambda n: job.__setitem__("done", base + n))
+                if final.stat().st_size == size:
+                    job["done"] = base + size
+                    return
+                final.unlink()
+                log.warning("Xet gave %s with the wrong size; downloading it the normal way", final.name)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                log.warning("Xet download of %s failed (%s); downloading it the normal way", final.name, e)
+            hf.discard_staging(final)
+            job["done"] = base
+        job["method"] = "http"
         name, part = final.name, final.with_name(final.name + ".part")
         have = part.stat().st_size if part.exists() else 0
-        headers = {"Range": f"bytes={have}-"} if have else {}
+        headers = ({"Range": f"bytes={have}-"} if have else {}) | hf.headers(self.cfg, url)
         async with client.stream("GET", url, headers=headers) as r:
             r.raise_for_status()
             if have and r.status_code != 206:  # server ignored the range; start over
@@ -221,6 +238,7 @@ class Downloads:
             if name in busy:
                 raise RuntimeError("Another download is using this file right now. Cancel it first.")
         for name in self.missing(key):
+            hf.discard_staging(self.folder / name)
             part = self.folder / (name + ".part")
             if part.exists():
                 part.unlink()

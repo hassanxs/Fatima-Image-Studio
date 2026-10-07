@@ -1709,6 +1709,7 @@ async function loadSettings() {
       if (el.type === 'checkbox') el.checked = Boolean(S.settings[el.name]); else el.value = S.settings[el.name];
     }
     $('set-key').value = S.settings.api_key;
+    renderHF();
     loadUpdate();
     $('app-version').textContent = `VERSION ${S.settings.version}`;
     $('app-version').href = S.settings.repo_url;
@@ -1878,7 +1879,7 @@ function renderModelList() {
         (isDefault ? '' : `<button type="button" class="text-btn red" data-model-act="delete" data-key="${m.key}">Remove from disk</button>`);
     } else if (busy) {
       act = `<div class="dl-track"><div style="width:${job.total ? (job.done / job.total) * 100 : 0}%"></div></div>
-        <span class="micro" style="font-weight:400">${gb(job.done)} of ${gb(job.total)}</span>
+        <span class="micro" style="font-weight:400">${gb(job.done)} of ${gb(job.total)}${job.method === 'xet' ? ' · Xet' : ''}</span>
         <button type="button" class="btn sm" data-model-act="cancel" data-key="${m.key}">Cancel</button>`;
     } else {
       const paused = m.partial > 0;
@@ -1932,6 +1933,8 @@ $('model-list').addEventListener('click', async (e) => {
 let SETUP = null, benchRunning = false;
 async function loadSetup(refresh = false) {
   try { SETUP = await api('/api/setup' + (refresh ? '?refresh=true' : '')); } catch { return; }
+  if (!S.settings) { try { S.settings = await api('/api/settings'); } catch { /* shown elsewhere */ } }
+  renderHF();
   if (S.view === 'setup') renderSetup();
   renderSize();  // the size warning depends on the GPU and Low-memory mode
 }
@@ -1942,7 +1945,7 @@ const FIT = {
 function dlProgress(job, key, kind) {
   if (job.status === 'installing') return `<div class="dl-track"><div style="width:100%"></div></div><span class="micro">Unpacking…</span>`;
   return `<div class="dl-track"><div style="width:${job.total ? (job.done / job.total) * 100 : 0}%"></div></div>
-    <div class="choice-foot"><span class="micro" style="font-weight:400">${gb(job.done)} of ${gb(job.total)}</span>
+    <div class="choice-foot"><span class="micro" style="font-weight:400">${gb(job.done)} of ${gb(job.total)}${job.method === 'xet' ? ' · Xet' : ''}</span>
     <button type="button" class="btn sm" data-setup="${kind}:cancel" data-key="${key}">Cancel</button></div>`;
 }
 function choiceCard({ label, about, badges, tags = '', active, body }) {
@@ -2315,6 +2318,42 @@ function renderUpdateBadge() {
   addEventListener('resize', () => { if (!menu.hidden) place(); });
   addEventListener('scroll', () => { if (!menu.hidden) place(); }, { passive: true });
 })();
+
+// ---------- Hugging Face token (Settings → General and the Setup page) ----------
+
+function renderHF() {
+  const s = S.settings;
+  if (!s) return;
+  document.querySelectorAll('[data-hf]').forEach((box) => {
+    const status = box.querySelector('[data-hf-status]');
+    const input = box.querySelector('[data-hf-input]');
+    input.placeholder = s.hf_token_set ? 'Saved — paste a new token to replace it' : 'hf_…';
+    status.innerHTML = s.hf_token_set
+      ? `<span class="hf-ok">Connected as ${esc(s.hf_user || 'your account')}.</span> ` +
+        (s.xet_available ? 'Model downloads use Xet, with the normal download as a fallback.' : 'Downloads send the token (Xet isn’t available in this copy).') +
+        ' <button type="button" class="text-btn red" data-hf-remove>Remove</button>'
+      : 'Not set — downloads work as usual without it.';
+  });
+}
+document.addEventListener('click', async (e) => {
+  const save = e.target.closest('[data-hf-save]'), remove = e.target.closest('[data-hf-remove]');
+  if (!save && !remove) return;
+  const box = e.target.closest('[data-hf]');
+  const value = remove ? '' : box.querySelector('[data-hf-input]').value.trim();
+  if (save && !value) { toast('Paste your Hugging Face token first.'); return; }
+  const btn = save || remove;
+  btn.disabled = true;
+  try {
+    S.settings = { ...S.settings, ...(await api('/api/settings', { method: 'PUT', json: { hf_token: value } })) };
+    document.querySelectorAll('[data-hf-input]').forEach((i) => { i.value = ''; });
+    toast(remove ? 'Hugging Face token removed' : `Connected to Hugging Face as ${S.settings.hf_user}`, true);
+  } catch (err) { toast(err.message); }
+  btn.disabled = false;
+  renderHF();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches('[data-hf-input]')) e.target.closest('[data-hf]').querySelector('[data-hf-save]').click();
+});
 
 function renderMachine() {
   const e = S.state?.engine;

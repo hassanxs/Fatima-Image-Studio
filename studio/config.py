@@ -49,7 +49,9 @@ DEFAULTS = {
     "default_model": "q4",
     "steps": 0,  # 0 = each model's own default
     "notify": True,
-    "check_updates": True,  # installed copies look for a newer GitHub release at start and every 6 hours
+    "check_updates": True,
+    "hf_token": "",  # optional Hugging Face token: faster Xet downloads, higher rate limits, gated models
+    "hf_user": "",   # the account that token belongs to (shown in Settings)  # installed copies look for a newer GitHub release at start and every 6 hours
     "idle_unload_minutes": 10,
     "image_timeout_s": 600,
 }

@@ -13,7 +13,7 @@ from pathlib import Path
 
 import httpx
 
-from . import config
+from . import config, hf
 from .lora_convert import FUSED_HIDDEN, convert, detect_family, header_only, needs_conversion
 from .store import slug
 
@@ -139,14 +139,14 @@ class Loras:
             raise ValueError("Paste a Hugging Face link like https://huggingface.co/owner/lora-name")
         repo, wanted = m[1], m[2]
         async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
-            r = await client.get(f"{HF}/api/models/{repo}")
+            r = await client.get(f"{HF}/api/models/{repo}", headers=hf.headers(self.cfg, HF + "/"))
             if r.status_code == 404:
                 raise ValueError(f"Hugging Face has no model called {repo}.")
             r.raise_for_status()
             info = r.json()
-        if info.get("gated"):
-            raise ValueError(f"{repo} requires accepting terms on Hugging Face, so it can't be downloaded here. "
-                             "Download the file in your browser and use Upload instead.")
+        if info.get("gated") and not hf.token(self.cfg):
+            raise ValueError(f"{repo} requires accepting terms on Hugging Face. Accept them on its page, add your "
+                             "Hugging Face token in Settings, and try again — or download the file and use Upload.")
         files = [s["rfilename"] for s in info.get("siblings", []) if s["rfilename"].endswith(".safetensors")]
         if wanted:
             files = [f for f in files if f == wanted] or files
@@ -181,7 +181,7 @@ class Loras:
         try:
             url = f"{HF}/{found['repo']}/resolve/main/{found['file']}"
             async with httpx.AsyncClient(follow_redirects=True, timeout=httpx.Timeout(30, read=300)) as client:
-                async with client.stream("GET", url) as r:
+                async with client.stream("GET", url, headers=hf.headers(self.cfg, url)) as r:
                     r.raise_for_status()
                     job["total"] = int(r.headers.get("content-length") or 0)
                     with open(part, "wb") as f:

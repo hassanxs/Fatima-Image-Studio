@@ -7,3 +7,5 @@ python-multipart>=0.0.9 # file uploads (reference images, LoRAs)
 pillow>=10              # images, thumbnails, contact sheets, tray icon
 pystray>=0.19           # tray icon
 mcp>=1.10,<2            # MCP server for AI agents (2.x renamed FastMCP; port before upgrading)
+huggingface_hub>=1.30,<3 # fast Xet downloads from Hugging Face when a token is set (falls back to plain HTTP)
+hf_xet>=1.7,<2          # the Xet transfer client used by huggingface_hub

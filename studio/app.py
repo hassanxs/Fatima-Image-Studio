@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 
 from . import APP_NAME, REPO_URL, __version__, config
 from .engine import Engine, EngineError
-from . import autostart, hardware, presets
+from . import autostart, hardware, hf, presets
 from .downloads import Downloads
 from .updater import Updater
 from .loras import Loras
@@ -784,7 +784,10 @@ def create_app(cfg: dict) -> FastAPI:
 
     @app.get("/api/settings")
     def get_settings():
-        return {k: cfg[k] for k in sorted(config.EDITABLE)} | {"engine_dir": str(config.engine_dir(cfg)),
+        # The Hugging Face token is never sent back to the page, only whether one is set and for whom.
+        return {k: cfg[k] for k in sorted(config.EDITABLE)} | {"hf_token_set": bool(hf.token(cfg)),
+                                                              "hf_user": cfg.get("hf_user", ""),
+                                                              "xet_available": hf.xet_available(), "engine_dir": str(config.engine_dir(cfg)),
                                                               "models_dir": cfg["models_dir"],
                                                               "start_with_windows": autostart.enabled(),
                                                               "python_exe": autostart.python_console(),
@@ -826,6 +829,19 @@ def create_app(cfg: dict) -> FastAPI:
         for key in ("steps", "idle_unload_minutes", "port"):
             if key in changes:
                 changes[key] = int(changes[key])
+        if "hf_token" in body:  # set (checked with Hugging Face first) or cleared with ""
+            new = str(body["hf_token"] or "").strip()
+            if new:
+                try:
+                    cfg["hf_user"] = await hf.whoami(new)
+                except ValueError as e:
+                    raise HTTPException(400, str(e))
+                except httpx.HTTPError as e:
+                    raise HTTPException(502, f"Couldn't reach Hugging Face to check the token: {e}")
+            else:
+                cfg["hf_user"] = ""
+            cfg["hf_token"] = new
+            config.save(cfg)
         if "low_vram" in changes and changes["low_vram"] not in ("auto", "on", "off"):
             raise HTTPException(400, "low_vram must be auto, on or off")
         cfg.update(changes)

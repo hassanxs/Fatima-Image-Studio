@@ -362,6 +362,13 @@ h1 { margin: 0; font-size: clamp(38px, 5vw, 62px); line-height: 1; font-weight: 
 
 /* ---------- models ---------- */
 .models-panel.first { margin-top: 0; }
+/* ---------- Hugging Face token ---------- */
+.hf-box { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r); }
+.hf-box strong { font-size: 14px; font-weight: 600; }
+.hf-box .help { font-size: 12px; line-height: 1.5; }
+.hf-row { display: flex; gap: 8px; }
+.hf-row input { flex: 1; min-width: 0; }
+.hf-ok { color: #4d6b00; font-weight: 600; }
 /* ---------- updates ---------- */
 .updates-panel { flex: 1 1 360px; padding: 28px; display: flex; flex-direction: column; gap: 14px; min-width: 0; align-self: flex-start; }
 .upd-status { margin: 0; font-size: 14px; line-height: 1.5; }

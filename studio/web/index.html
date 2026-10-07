@@ -340,6 +340,17 @@
 
   <section class="card models-panel" aria-labelledby="mod-h">
     <div class="step-head"><span class="step-num" id="step-model">2</span><h2 class="panel-title" id="mod-h">Model</h2></div>
+    <div class="hf-box" data-hf>
+    <div class="row between"><strong>Hugging Face token</strong><span class="micro">Optional</span></div>
+    <p class="help">Faster model downloads (Xet), higher download limits, and models that need you to accept their
+      terms on Hugging Face first. Create a free <b>Read</b> token at
+      <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>.</p>
+    <div class="hf-row">
+      <input type="password" class="input mono" placeholder="hf_…" autocomplete="off" spellcheck="false" aria-label="Hugging Face token" data-hf-input>
+      <button type="button" class="btn" data-hf-save>Save</button>
+    </div>
+    <p class="help" data-hf-status></p>
+    </div>
     <p class="help" style="font-size:12px" id="setup-model-help">The AI model that draws the images. One-time download; it resumes if interrupted.</p>
     <div class="choices" id="setup-models"></div>
     <div class="mem-row">
@@ -533,6 +544,21 @@
         <span class="switch-ui" aria-hidden="true"></span>
         <span><strong>Check for updates automatically</strong><span class="help" style="display:block;font-size:12px">When the app starts and every 6 hours. Nothing is installed without you choosing it.</span></span>
       </label>
+    </section>
+
+    <section class="card updates-panel" aria-labelledby="dl-h">
+      <div class="row between"><h2 class="panel-title" id="dl-h">Downloads</h2><span class="micro">Hugging Face</span></div>
+      <div class="hf-box" data-hf>
+      <div class="row between"><strong>Hugging Face token</strong><span class="micro">Optional</span></div>
+      <p class="help">Faster model downloads (Xet), higher download limits, and models that need you to accept their
+        terms on Hugging Face first. Create a free <b>Read</b> token at
+        <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>.</p>
+      <div class="hf-row">
+        <input type="password" class="input mono" placeholder="hf_…" autocomplete="off" spellcheck="false" aria-label="Hugging Face token" data-hf-input>
+        <button type="button" class="btn" data-hf-save>Save</button>
+      </div>
+      <p class="help" data-hf-status></p>
+      </div>
     </section>
   </div>
 
