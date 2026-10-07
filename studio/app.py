@@ -135,7 +135,7 @@ def create_app(cfg: dict) -> FastAPI:
             "engine": status,
             "models": [{"key": k, "label": m["label"], "short": m["short"], "installed": k in installed,
                         "refs": m["refs"], "noncommercial": bool(m.get("noncommercial")), "family": m["family"],
-                        "speed": m.get("speed", 1.0)}
+                        "lora_families": config.lora_families(k), "speed": m.get("speed", 1.0)}
                        for k, m in config.MODELS.items()],
             "default_model": cfg["default_model"],
             "setup_ready": cfg["engine"] in config.installed_engines(cfg) and cfg["default_model"] in installed,
@@ -220,7 +220,7 @@ def create_app(cfg: dict) -> FastAPI:
             prompts.append(entry)
         if (batch_refs or prompt_refs) and not config.MODELS[settings["model"]]["refs"]:
             raise HTTPException(400, f"{config.MODELS[settings['model']]['label']} doesn't use reference images. "
-                                     "Remove them, or pick a FLUX.2 model.")
+                                     "Remove them, or pick a model that uses them (FLUX.2, Qwen-Image-Edit, Qwen-Image 2.1, Kontext).")
         try:
             b = store.create(name=spec.get("name"), prompts=prompts, settings=settings,
                              batch_refs=batch_refs, prompt_refs=prompt_refs)
@@ -248,7 +248,7 @@ def create_app(cfg: dict) -> FastAPI:
         refs = [data for k in range(MAX_PINNED) if (data := await read_upload(form.get(f"ref_{k}")))]
         if refs and not config.MODELS[settings["model"]]["refs"]:
             raise HTTPException(400, f"{config.MODELS[settings['model']]['label']} doesn't use reference images. "
-                                     "Remove them, or pick a FLUX.2 model.")
+                                     "Remove them, or pick a model that uses them (FLUX.2, Qwen-Image-Edit, Qwen-Image 2.1, Kontext).")
         try:
             b, items = store.add_single(text=text, settings=settings, refs=refs,
                                         count=settings["per_prompt"], seed=settings["seed"])
@@ -284,13 +284,13 @@ def create_app(cfg: dict) -> FastAPI:
     def check_loras(entries: list, model: str) -> list[dict]:
         if len(entries) > config.MAX_LORAS:
             raise HTTPException(400, f"Use at most {config.MAX_LORAS} LoRAs per batch.")
-        family = config.MODELS[model]["family"]
+        accepted = config.lora_families(model)
         out = []
         for e in entries:
             lora = loras.get(str((e or {}).get("id", "")))
             if not lora:
                 raise HTTPException(400, "A chosen LoRA is no longer in the library.")
-            if lora["family"] != family:
+            if lora["family"] not in accepted:
                 needs = config.FAMILIES.get(lora["family"], "an unknown model")
                 raise HTTPException(400, f"“{lora['name']}” is made for {needs}, not {config.MODELS[model]['label']}."
                                     if lora["family"] else f"Set the base model of “{lora['name']}” on the Models page (LoRA library) first.")
@@ -1058,7 +1058,7 @@ def create_app(cfg: dict) -> FastAPI:
         seed = form.get("seed")
         key = model_key(form.get("model"))
         if not config.MODELS[key]["refs"]:
-            raise HTTPException(400, f"{config.MODELS[key]['label']} doesn't use reference images; pick a FLUX.2 model.")
+            raise HTTPException(400, f"{config.MODELS[key]['label']} doesn't use reference images; pick a model that does (FLUX.2, Qwen-Image-Edit, Qwen-Image 2.1, Kontext).")
         try:
             wanted = json.loads(form.get("loras") or "[]")
         except ValueError:

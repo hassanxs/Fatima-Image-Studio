@@ -120,7 +120,9 @@ the project folder.
   the right file, detects which base model it's for from its layer shapes, reads the trigger words and licence
   from the model card, and rewrites FLUX.2 layer names the engine would otherwise skip (without that, only
   about half of a FLUX.2 LoRA applies). On Create, add up to 3 LoRAs with a strength each; their trigger words
-  go in front of every prompt. LoRAs only work with their own base model, so switching models drops the others.
+  go in front of every prompt. LoRAs only work with their own base model, so switching models drops the others. Recognised families: FLUX.2
+  klein 4B / 9B and dev, FLUX.1 (schnell, dev, Kontext — Chroma accepts these too), Chroma, Qwen-Image (and
+  Qwen-Image-Edit), Qwen-Image 2.1, Z-Image, SDXL and SD 1.5, in kohya, diffusers, ComfyUI and PEFT formats.
   Files live in `models\loras\`, details in `data\loras.json`; files dropped into the folder are picked up.
 - **Viewer** — click any image: ← → to browse, regenerate it (same or new seed; the new image replaces the file),
   copy its prompt, or delete it.

@@ -14,12 +14,19 @@ from pathlib import Path
 import httpx
 
 from . import config
-from .lora_convert import convert, detect_family, header_only, needs_conversion
+from .lora_convert import FUSED_HIDDEN, convert, detect_family, header_only, needs_conversion
 from .store import slug
 
 log = logging.getLogger("studio.loras")
 FILE = config.DATA / "loras.json"
 HF = "https://huggingface.co"
+
+
+# A model card's base_model -> family (most specific first; the file's own layers still win).
+BASE_MODEL_HINTS = [("flux2-klein-4b", "klein-4b"), ("flux2-klein-9b", "klein-9b"), ("flux2-dev", "flux.2-dev"),
+                    ("qwen-image-2.1", "qwen-image-2.1"), ("qwen-image", "qwen-image"), ("z-image", "z-image"),
+                    ("chroma", "chroma"), ("flux1", "flux.1"), ("sdxl", "stable-diffusion-xl"), ("sdxl", "sdxl"),
+                    ("sd15", "stable-diffusion-v1-5"), ("sd15", "stable-diffusion-v1"), ("sd15", "sd-1.5")]
 
 
 class Loras:
@@ -65,7 +72,7 @@ class Loras:
         fixed = 0
         if needs_conversion(header):
             tmp = path.with_suffix(".converting")
-            fixed = convert(path, tmp)
+            fixed = convert(path, tmp, hidden=FUSED_HIDDEN.get(detect_family(header) or family, 3072))
             tmp.replace(path)
             header, meta = header_only(path)
         return {
@@ -150,8 +157,7 @@ class Loras:
         card = info.get("cardData") or {}
         bases = card.get("base_model") or []
         bases = [bases] if isinstance(bases, str) else bases
-        family = next((fam for b in bases for fam, key in (("flux2-klein-4b", "klein-4b"), ("flux2-klein-9b", "klein-9b"),
-                                                            ("z-image", "z-image")) if key in b.lower()), None)
+        family = next((fam for b in bases for fam, key in BASE_MODEL_HINTS if key in b.lower()), None)
         triggers = card.get("instance_prompt") or ""
         if not triggers and card.get("widget"):
             first = str((card["widget"][0] or {}).get("text", ""))

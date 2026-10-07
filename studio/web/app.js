@@ -583,13 +583,16 @@ S.loraLib = [];
 S.loraJobs = {};
 S.loraPicks = [];  // [{id, strength, use_triggers}]
 const MAX_LORA_PICKS = 3;
-const familyName = (f) => ({ 'flux2-klein-4b': 'FLUX.2 klein 4B', 'flux2-klein-9b': 'FLUX.2 klein 9B', 'z-image': 'Z-Image' }[f] || 'Unknown model');
+S.families = {};  // family key -> name, from the server
+const familyName = (f) => S.families[f] || 'Unknown model';
+const loraOk = (l, model = S.model) => (modelInfo(model).lora_families || [modelInfo(model).family]).includes(l?.family);
 
 async function loadLoras() {
   try {
     const r = await api('/api/loras');
     S.loraLib = r.items;
     S.loraJobs = r.jobs;
+    S.families = r.families || S.families;
   } catch { return; }
   S.loraPicks = S.loraPicks.filter((x) => S.loraLib.some((l) => l.id === x.id));
   renderLoraPicker();
@@ -599,7 +602,7 @@ function renderLoraPicker() {
   const family = modelInfo(S.model).family;
   setHtml($('lora-picks'), S.loraPicks.map((x, i) => {
     const l = S.loraLib.find((y) => y.id === x.id) || {};
-    const ok = l.family === family;
+    const ok = loraOk(l);
     return `<div class="lora-pick${ok ? '' : ' bad'}" data-i="${i}">
       <strong title="${esc(l.name)}">${esc(l.name)}</strong>
       <button type="button" class="icon-btn" data-lora-act="remove" aria-label="Remove ${esc(l.name)}" style="width:22px;height:22px">${icon('x', 13)}</button>
@@ -610,14 +613,14 @@ function renderLoraPicker() {
       ${ok ? '' : `<span class="trig warn-text">Made for ${esc(familyName(l.family))} — it won't be used with this model.</span>`}
     </div>`;
   }).join(''));
-  const usable = S.loraLib.filter((l) => l.family === family && !S.loraPicks.some((x) => x.id === l.id));
+  const usable = S.loraLib.filter((l) => loraOk(l) && !S.loraPicks.some((x) => x.id === l.id));
   $('lora-add').innerHTML = `<option value="">${S.loraLib.length ? '+ Add a LoRA…' : 'No LoRAs yet — add some on the Models page'}</option>` +
     usable.map((l) => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
   $('lora-add-wrap').hidden = S.loraPicks.length >= MAX_LORA_PICKS;
   $('lora-add').disabled = !usable.length;
   $('lora-help').textContent = !S.loraLib.length
     ? 'Style or character add-ons. Add LoRAs on the Models page, then pick them here.'
-    : !S.loraLib.some((l) => l.family === family)
+    : !S.loraLib.some((l) => loraOk(l))
       ? `None of your LoRAs are made for ${familyName(family)}.`
       : `Style or character add-ons for ${familyName(family)}, up to ${MAX_LORA_PICKS}. Trigger words go in front of every prompt.`;
 }
@@ -658,7 +661,7 @@ function renderLoraLibrary() {
       <label class="field"><span class="label">Name</span><input class="input" data-f="name" value="${esc(l.name)}"></label>
       <label class="field"><span class="label">Base model</span><div class="select-wrap"><select class="select" data-f="family">
         ${l.family ? '' : '<option value="" selected>Unknown — pick one</option>'}
-        ${['flux2-klein-4b', 'flux2-klein-9b', 'z-image'].map((f) => `<option value="${f}"${l.family === f ? ' selected' : ''}>${familyName(f)}</option>`).join('')}
+        ${Object.keys(S.families).map((f) => `<option value="${f}"${l.family === f ? ' selected' : ''}>${familyName(f)}</option>`).join('')}
       </select><img src="icons/chevron-down.svg" width="16" height="16" alt=""></div></label>
       <label class="field"><span class="label">Trigger words</span><input class="input mono" data-f="triggers" value="${esc(l.triggers)}" placeholder="none"></label>
       <label class="field"><span class="label">Strength</span><input class="input mono" data-f="strength" type="number" min="0" max="2" step="0.05" value="${l.strength}"></label>
@@ -816,14 +819,13 @@ $('preset-delete').addEventListener('click', async () => {
 $('model-select').addEventListener('change', () => {
   S.model = $('model-select').value;
   updateSummary(); renderHeader();
-  const family = modelInfo(S.model).family;
-  const dropped = S.loraPicks.filter((x) => S.loraLib.find((l) => l.id === x.id)?.family !== family);
+  const dropped = S.loraPicks.filter((x) => !loraOk(S.loraLib.find((l) => l.id === x.id)));
   if (dropped.length) {
     S.loraPicks = S.loraPicks.filter((x) => !dropped.includes(x));
     toast(`Removed ${plural(dropped.length, 'LoRA')} made for a different model.`);
   }
   renderLoraPicker();
-  if (S.pins.length && !modelInfo(S.model).refs) toast(`${modelInfo(S.model).label} doesn't use reference images — remove the pinned ones or pick a FLUX.2 model.`);
+  if (S.pins.length && !modelInfo(S.model).refs) toast(`${modelInfo(S.model).label} doesn't use reference images — remove the pinned ones or pick a model that does (FLUX.2, Qwen, Kontext).`);
 });
 
 $('batch-name').addEventListener('input', updateNameHelp);

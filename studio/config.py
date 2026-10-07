@@ -168,6 +168,7 @@ MODELS = {
                "diffusion": "Chroma1-HD-Q4_0.gguf", "t5xxl": "t5xxl_fp8_e4m3fn.safetensors", "vae": "ae.safetensors",
                "steps": 26, "cfg": 4.0, "speed": 10,
                "flags": ["--diffusion-fa", "--model-args", "chroma_use_dit_mask=false"], "refs": False,
+               "lora_families": ["flux1"],  # Chroma is built on FLUX.1, so most FLUX.1 LoRAs apply too
                "license": "Apache 2.0 — commercial use OK",
                "about": "Community model built on FLUX.1 schnell: wide range of styles, photo and art, with few content "
                         "restrictions. Uses CFG, so it's slower per image."},
@@ -209,6 +210,12 @@ FILE_ARGS = {"checkpoint": "--model", "diffusion": "--diffusion-model", "llm": "
              "clip_l": "--clip_l", "clip_g": "--clip_g", "t5xxl": "--t5xxl", "vae": "--vae"}
 TEXT_PARTS = ("llm", "clip_l", "clip_g", "t5xxl")
 MAX_LORAS = 3  # per batch
+
+
+def lora_families(key: str) -> list[str]:
+    """The LoRA families a model can use: its own, plus any it's compatible with."""
+    m = MODELS[key]
+    return [m["family"], *m.get("lora_families", [])]
 
 
 def lora_dir(cfg: dict) -> Path:
