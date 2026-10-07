@@ -43,10 +43,17 @@
   </div>
 
   <div class="desk">
-    <section class="card composer" aria-labelledby="new-batch">
-      <div class="row between">
-        <h2 class="section-title" id="new-batch">New batch</h2>
-        <span class="chip dark"><img src="icons/dot-lime.svg" width="5" height="5" alt="">Draft</span>
+    <section class="card composer" id="composer" data-cmode="single" aria-labelledby="new-batch">
+      <h2 class="sr-only" id="new-batch"><span class="batch-only">New batch</span><span class="single-only">New image</span></h2>
+      <div class="seg create-mode" id="create-mode" role="group" aria-label="What to make">
+        <button type="button" data-cmode="single" aria-pressed="true">Single image</button>
+        <button type="button" data-cmode="batch" aria-pressed="false">Batch</button>
+      </div>
+
+      <div class="field single-only" style="gap:6px">
+        <label class="label" for="single-prompt">Prompt</label>
+        <textarea class="paste single-prompt" id="single-prompt" rows="5" placeholder="Describe the image you want…"></textarea>
+        <p class="help">Ctrl+Enter to generate. Each image is saved in today's Singles folder and made right away, ahead of any running batch.</p>
       </div>
 
       <div class="field" style="gap:6px">
@@ -62,15 +69,15 @@
         <p class="help">Size, images, model, seed, upscale, style and reference image — saved together.</p>
       </div>
 
-      <div class="field" style="gap:6px">
+      <div class="field batch-only" style="gap:6px">
         <label class="label" for="batch-name" style="margin-bottom:2px">Batch name</label>
         <input class="input mono" id="batch-name" placeholder="Auto · date + first prompt" autocomplete="off" spellcheck="false">
         <p class="help" id="name-help">Type to rename. Saved as a folder on disk.</p>
       </div>
 
-      <hr class="divider">
+      <hr class="divider batch-only">
 
-      <div class="row between">
+      <div class="row between batch-only">
         <div class="modes" role="group" aria-label="Prompt input mode">
           <button type="button" id="mode-list" aria-pressed="true">List</button>
           <button type="button" id="mode-paste" aria-pressed="false">Paste text</button>
@@ -80,7 +87,7 @@
         <input type="file" id="import-file" accept=".csv,.txt,text/plain,text/csv" hidden>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="batch-only" style="display:flex;flex-direction:column;gap:8px">
         <ol class="prompts" id="prompt-list"></ol>
         <textarea class="paste" id="prompt-paste" hidden placeholder="One prompt per line" aria-label="Prompts, one per line"></textarea>
         <div class="template" id="template-box" hidden>
@@ -112,7 +119,7 @@
           </div>
         </div>
         <textarea class="paste" id="style" rows="2" style="min-height:64px;font-family:var(--sans);font-size:12px" placeholder="Flat 2D vector cartoon, thick black outlines, flat cel-shaded fills"></textarea>
-        <p class="help">Added to every prompt in the batch, so each prompt only needs to describe the scene.</p>
+        <p class="help"><span class="batch-only">Added to every prompt in the batch, so each prompt only needs to describe the scene.</span><span class="single-only">Added to the prompt, so you can keep one look across images.</span></p>
       </div>
 
       <div class="field" style="gap:8px">
@@ -125,18 +132,18 @@
           <select class="select" id="lora-add"><option value="">+ Add a LoRA…</option></select>
           <img src="icons/chevron-down.svg" width="16" height="16" alt="">
         </div>
-        <p class="help" id="lora-help">Style or character add-ons for the chosen model, up to 3. Their trigger words go in front of every prompt.</p>
+        <p class="help" id="lora-help" data-batch-help>Style or character add-ons for the chosen model, up to 3. Their trigger words go in front of every prompt.</p>
       </div>
 
       <div class="field" style="gap:8px">
-        <div class="row between"><span class="label">Pinned references <span style="text-transform:none;font-weight:400">— optional</span></span>
+        <div class="row between"><span class="label"><span class="batch-only">Pinned references</span><span class="single-only">Reference images</span> <span style="text-transform:none;font-weight:400">— optional</span></span>
           <span class="micro" style="font-size:10px;font-weight:400" id="pins-count">0 / 4</span></div>
         <div class="pins" id="pins"></div>
         <div class="dropzone" id="batch-ref" role="button" tabindex="0" aria-label="Add a pinned reference image">
           <span><img src="icons/image-plus.svg" width="22" height="22" alt=""></span>
           <span class="dz-text">
             <strong id="batch-ref-title">Drop images or browse</strong>
-            <span>Up to 4, used by every prompt — e.g. your character plus a setting. A prompt's own reference is added on top.</span>
+            <span><span class="batch-only">Up to 4, used by every prompt — e.g. your character plus a setting. A prompt's own reference is added on top.</span><span class="single-only">Up to 4 — e.g. your character plus a setting. With references, the prompt can also be an edit (“make it night”).</span></span>
           </span>
         </div>
       </div>
@@ -160,7 +167,7 @@
           </div>
         </div>
         <div class="field">
-          <span class="label" id="per-prompt-label">Images / prompt</span>
+          <span class="label" id="per-prompt-label"><span class="batch-only">Images / prompt</span><span class="single-only">Images</span></span>
           <div class="stepper" role="group" aria-labelledby="per-prompt-label">
             <button type="button" id="per-minus" aria-label="Fewer images per prompt"><img src="icons/minus.svg" width="14" height="14" alt=""></button>
             <span id="per-prompt">1</span>
@@ -179,7 +186,7 @@
           <input class="input mono" id="seed" placeholder="Random" inputmode="numeric" autocomplete="off">
         </div>
       </div>
-      <p class="help tiny">One seed for the whole batch. Leave blank for random.</p>
+      <p class="help tiny"><span class="batch-only">One seed for the whole batch. Leave blank for random.</span><span class="single-only">Leave blank for random. More images use seed + 1, + 2…</span></p>
 
       <div class="field">
         <label class="label" for="upscale">Upscale</label>
@@ -187,7 +194,7 @@
           <select class="select" id="upscale"><option value="">Off — keep the generated size</option></select>
           <img src="icons/chevron-down.svg" width="16" height="16" alt="">
         </div>
-        <p class="help tiny">Each image is upscaled after the whole batch has been generated. The originals are kept; upscaled copies go in <span class="mono">upscaled\</span>.</p>
+        <p class="help tiny"><span class="batch-only">Each image is upscaled after the whole batch has been generated.</span><span class="single-only">Upscaled right after it's made.</span> The originals are kept; upscaled copies go in <span class="mono">upscaled\</span>.</p>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -197,6 +204,7 @@
     </section>
 
     <section class="run" aria-label="Current batch">
+      <div id="single-hero"></div>
       <div id="focus"></div>
       <div class="gallery-bar" id="gallery-bar" hidden>
         <div class="gallery-head"><h2>The output</h2><span class="micro" id="gallery-count"></span></div>

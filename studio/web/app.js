@@ -730,6 +730,16 @@ function secondsPerImage(w, h, model) {
   return (0.6 + 6.4 * (w * h) / (1024 * 1024)) * (model === 'q8' ? 1.3 : 1);
 }
 function updateSummary() {
+  if (S.cmode === 'single') {
+    const text = $('single-prompt').value.trim();
+    const [w, h] = $('size').value.split('x').map(Number);
+    $('start-label').textContent = `Generate · ${plural(S.perPrompt, 'image')}`;
+    $('start').disabled = !text;
+    const busy = (S.state?.queue || []).length > 0;
+    $('sum-eta').textContent = !text ? 'Describe the image to generate.'
+      : `About ${fmtDuration(S.perPrompt * secondsPerImage(w, h, S.model))} on this GPU` + (busy ? ' · made next, ahead of queued batches' : '');
+    return;
+  }
   const rows = currentRows();
   $('prompt-count').textContent = plural(rows.length, 'prompt');
   updateNameHelp();
@@ -749,6 +759,7 @@ function updateSummary() {
 }
 
 $('start').addEventListener('click', async () => {
+  if (S.cmode === 'single') return startSingle();
   if (S.mode === 'paste') syncFromPaste();
   const rows = S.rows.filter((r) => r.text.trim());
   if (!rows.length) return;
@@ -799,6 +810,10 @@ function pickFocus() {
   const ids = new Set(S.batches.map((b) => b.id));
   if (S.pinned && ids.has(S.focusId)) return S.focusId;
   S.pinned = false;
+  if (S.cmode === 'single') {
+    const singles = S.batches.filter((b) => b.kind === 'singles').sort((a, b) => b.created.localeCompare(a.created))[0];
+    if (singles) return singles.id;
+  }
   return S.state?.current?.batch || S.state?.queue?.[0] || S.batches[0]?.id || null;
 }
 
@@ -816,8 +831,12 @@ async function refreshDetail(force) {
 
 function renderFocus() {
   const d = S.detail;
+  renderSingleHero(d);
   if (!d) {
-    setHtml($('focus'), `<div class="card empty">No batches yet. Add prompts on the left and press <b>Start batch</b>.</div>`);
+    setHtml($('focus'), S.cmode === 'single'
+      ? `<div class="card empty">Describe an image on the left and press <b>Generate</b>. It appears here.</div>`
+      : `<div class="card empty">No batches yet. Add prompts on the left and press <b>Start batch</b>.</div>`);
+    renderSingleHero(null);
     setHtml($('next'), '');
     $('gallery-bar').hidden = $('gallery-foot').hidden = true;
     $('tiles').innerHTML = ''; delete $('tiles').dataset.batch; tileCache.clear();
@@ -829,7 +848,7 @@ function renderFocus() {
     const pct = d.total ? (processed / d.total) * 100 : 0;
     const s = d.settings;
     const live = S.state?.current?.batch;
-    const params = [`${s.width} × ${s.height}${d.mixed ? ' (default)' : ''}`, modelShort(s.model),
+    const params = d.kind === 'singles' ? `Single images · ${plural(d.prompt_count, 'prompt')} · each with its own settings` : [`${s.width} × ${s.height}${d.mixed ? ' (default)' : ''}`, modelShort(s.model),
       d.mixed ? `${d.prompt_count} prompts · ${plural(d.total, 'image')} · per-prompt settings` : `${d.prompt_count} prompts × ${s.per_prompt}`,
       d.has_refs ? 'with reference images' : null, s.style ? 'with style' : null,
       s.upscale ? `upscale ${s.upscale.factor}× ${upscalerLabel(s.upscale.model).toLowerCase()}` : null,
@@ -1432,7 +1451,7 @@ function renderBatches() {
             <div class="bactions">
               <button type="button" class="btn red" data-act="view">${icon('arrow-up-right-light', 18)}View</button>
               <button type="button" class="btn" data-act="open">${icon('folder', 18)}Open folder</button>
-              <button type="button" class="btn" data-act="rerun">${icon('rotate-cw', 18)}Re-run</button>
+              ${b.kind === 'singles' ? '' : `<button type="button" class="btn" data-act="rerun">${icon('rotate-cw', 18)}Re-run</button>`}
               <button type="button" class="btn" data-act="copy">${icon('copy', 18)}Copy prompts</button>
               ${b.done ? '<button type="button" class="btn" data-act="export">Export</button>' : ''}
               ${isActive(b.status) ? '' : '<button type="button" class="btn danger-light" data-act="delete">Delete</button>'}
@@ -1858,6 +1877,99 @@ $('view-setup').addEventListener('click', async (e) => {
   } catch (err) { toast(err.message); }
 });
 
+// ---------- create: single image ----------
+
+S.cmode = (() => { try { return localStorage.getItem('createMode') || 'single'; } catch { return 'single'; } })();
+function setCreateMode(m) {
+  S.cmode = m;
+  try { localStorage.setItem('createMode', m); } catch { /* private mode */ }
+  $('composer').dataset.cmode = m;
+  $('create-mode').querySelectorAll('[data-cmode]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cmode === m));
+  $('focus')._html = null;
+  updateSummary();
+  tick(true);
+}
+$('create-mode').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cmode]');
+  if (b && b.dataset.cmode !== S.cmode) setCreateMode(b.dataset.cmode);
+});
+$('single-prompt').addEventListener('input', updateSummary);
+$('single-prompt').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (!$('start').disabled) $('start').click(); }
+});
+
+async function startSingle() {
+  const text = $('single-prompt').value.trim();
+  if (!text) return;
+  const seedText = $('seed').value.trim();
+  if (seedText && !/^\d{1,10}$/.test(seedText)) { toast('Seed must be a whole number (or leave it empty for random).'); return; }
+  const [width, height] = $('size').value.split('x').map(Number);
+  const form = new FormData();
+  form.append('spec', JSON.stringify({
+    text,
+    settings: { model: S.model, width, height, count: S.perPrompt, seed: seedText ? Number(seedText) : null,
+                style: { text: $('style').value.trim(), position: S.stylePos }, upscale: upscaleChoice($('upscale').value),
+                loras: S.loraPicks },
+  }));
+  S.pins.forEach((x, k) => form.append(`ref_${k}`, x.file));
+  $('start').disabled = true;
+  try {
+    const r = await api('/api/singles', { method: 'POST', form });
+    S.focusId = r.batch.id; S.pinned = true; S.galleryAll = false;
+    S.singleLast = r.items;  // the hero shows these until they're done
+    await tick(true);
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    updateSummary();
+  }
+}
+
+function renderSingleHero(d) {
+  const box = $('single-hero');
+  if (S.cmode !== 'single' || !d || d.kind !== 'singles' || !d.prompts.length) { setHtml(box, ''); return; }
+  const last = d.prompts[d.prompts.length - 1];
+  const items = d.items.filter((it) => it.prompt === last.n && !it.kind);
+  const s = { ...d.settings, ...(last.settings || {}) };
+  const ratio = `${s.width} / ${s.height}; --ar: ${s.width / s.height}`;
+  const tiles = items.map((it) => {
+    if (it.status === 'done') {
+      return `<a class="hero-img" href="#" data-hero-open="${it.id}" style="aspect-ratio:${ratio}" aria-label="Open in the viewer">
+        <img src="${fileUrl(d.id, it.file)}?v=${encodeURIComponent(it.finished || '')}" alt="${esc(last.text)}"></a>`;
+    }
+    const label = { running: 'Generating…', queued: 'Waiting…', failed: 'Failed', cancelled: 'Cancelled' }[it.status] || it.status;
+    return `<div class="hero-img wait ${it.status}" style="aspect-ratio:${ratio}"><span>${label}</span></div>`;
+  }).join('');
+  const first = items.find((it) => it.status === 'done');
+  const failed = items.find((it) => it.status === 'failed');
+  setHtml(box, `<div class="hero">
+    <div class="hero-grid n${items.length}">${tiles}</div>
+    <div class="hero-cap">
+      <p>${esc(last.text)}<span class="micro">${s.width} × ${s.height} · ${esc(modelShort(s.model))} · seed ${last.seed}${items.length > 1 ? `–${last.seed + items.length - 1}` : ''}${failed ? ` · ${esc(failed.error || 'failed')}` : ''}</span></p>
+      <div class="hero-acts">
+        ${first ? `<button type="button" class="btn sm" data-hero="open" data-id="${first.id}">Open</button>` : ''}
+        <button type="button" class="btn sm" data-hero="seed" data-seed="${last.seed}">Use this seed</button>
+        <button type="button" class="btn sm" data-hero="prompt">Reuse prompt</button>
+        ${failed ? `<button type="button" class="btn sm" data-hero="retry" data-id="${failed.id}">Retry</button>` : ''}
+      </div>
+    </div></div>`);
+  box.dataset.batch = d.id;
+  box.dataset.prompt = last.text;
+}
+$('single-hero').addEventListener('click', async (e) => {
+  const box = $('single-hero');
+  const open = e.target.closest('[data-hero-open], [data-hero="open"]');
+  if (open) { e.preventDefault(); openViewer(box.dataset.batch, { id: open.dataset.heroOpen || open.dataset.id }); return; }
+  const b = e.target.closest('[data-hero]');
+  if (!b) return;
+  if (b.dataset.hero === 'seed') { $('seed').value = b.dataset.seed; toast('Seed set — the next image uses it', true); }
+  if (b.dataset.hero === 'prompt') { $('single-prompt').value = box.dataset.prompt; $('single-prompt').focus(); updateSummary(); }
+  if (b.dataset.hero === 'retry') {
+    try { await api(`/api/batches/${box.dataset.batch}/items/${b.dataset.id}/retry`, { method: 'POST' }); tick(true); }
+    catch (err) { toast(err.message); }
+  }
+});
+
 function renderMachine() {
   const e = S.state?.engine;
   if (!e || !S.settings) return;
@@ -1967,6 +2079,8 @@ async function tick(force = false) {
 }
 
 (async function init() {
+  $('composer').dataset.cmode = S.cmode;
+  $('create-mode').querySelectorAll('[data-cmode]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cmode === S.cmode));
   renderRows();
   showView();
   try { S.settings = await api('/api/settings'); } catch { /* shown by tick */ }

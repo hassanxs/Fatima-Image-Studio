@@ -8,7 +8,7 @@ import time
 
 from . import config
 from .engine import Cancelled, Engine, EngineError
-from .store import Store, compose_prompt, pinned_refs
+from .store import Store, compose_prompt, pinned_refs, prompt_of, prompt_refs, settings_for
 
 log = logging.getLogger("studio.worker")
 
@@ -43,6 +43,8 @@ class Worker:
 
     def next_item(self) -> tuple[str, dict, dict] | None:
         batches = [b for b in sorted(self.store.batches.values(), key=lambda b: b["order"]) if not b["paused"]]
+        # Single images jump the queue: they're made right after the image in progress.
+        batches.sort(key=lambda b: b.get("kind") != "singles")
         for b in batches:
             for it in b["items"]:
                 if it["status"] == "queued":
@@ -79,8 +81,8 @@ class Worker:
             self.api_busy = False
 
     async def _run_item(self, b: dict, it: dict) -> None:
-        s = b["settings"]
         prompt = next(p for p in b["prompts"] if p["n"] == it["prompt"])
+        s = settings_for(b, prompt)
         if it["seed"] is None:
             it["seed"] = random.randint(0, 2**31 - 1)
         it.update(status="running", error=None, started=_now())
@@ -113,13 +115,13 @@ class Worker:
                 self.store.save(b)
 
     def _params(self, b: dict, it: dict, prompt: dict) -> dict:
-        s, folder = b["settings"], self.store.folder(b)
+        s, folder = settings_for(b, prompt), self.store.folder(b)
         steps = s.get("steps") or config.steps_for(self.cfg, s["model"])
         params = dict(model=s["model"], seed=it["seed"], steps=steps)
         kind = it.get("kind")
         params["loras"] = s.get("loras") or []
         if not kind:  # a normal batch image: pinned references + the prompt's own
-            refs = pinned_refs(b) + ([prompt["ref"]] if prompt["ref"] else [])
+            refs = pinned_refs(b) + prompt_refs(prompt)
             return params | dict(prompt=with_triggers(compose_prompt(prompt["text"], s.get("style")), s),
                                  width=prompt.get("width", s["width"]), height=prompt.get("height", s["height"]),
                                  refs=[(folder / r).read_bytes() for r in refs])
@@ -211,7 +213,7 @@ class Worker:
         self.store.save(b)
         try:
             folder = self.store.folder(b)
-            png = await self.engine.upscale(b["settings"]["model"], (folder / it["file"]).read_bytes(),
+            png = await self.engine.upscale(settings_for(b, prompt_of(b, it))["model"], (folder / it["file"]).read_bytes(),
                                             config.UPSCALERS[up["model"]]["name"], up["factor"])
             (folder / "upscaled").mkdir(exist_ok=True)
             (folder / up["file"]).write_bytes(png)

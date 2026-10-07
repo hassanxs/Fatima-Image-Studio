@@ -24,6 +24,9 @@ STOP_WORDS = {"a", "an", "the", "of", "in", "on", "at", "with", "and", "to", "fo
 VARIANTS = "abcdefgh"
 MAX_PINNED = 4  # pinned reference images per batch
 PROMPT_OVERRIDES = ("width", "height", "seed", "per_prompt")  # per-prompt settings that beat the batch's
+# Single images (Create → Single image) go into one "Singles" batch per day. Each single is a prompt of
+# that batch carrying its own settings (model, size, LoRAs, style, upscale…) and its own reference images.
+SINGLE_SETTINGS = ("model", "width", "height", "steps", "style", "loras", "upscale")
 
 
 def clean_name(name: str) -> str:
@@ -62,6 +65,20 @@ def compose_prompt(text: str, style: dict | None) -> str:
     if not style or not style.get("text"):
         return text
     return f"{text}, {style['text']}" if style.get("position") == "after" else f"{style['text']}, {text}"
+
+
+def settings_for(b: dict, prompt: dict | None) -> dict:
+    """The settings an image of this prompt is made with: the batch's, plus a single image's own."""
+    return b["settings"] | ((prompt or {}).get("settings") or {})
+
+
+def prompt_of(b: dict, item: dict) -> dict | None:
+    return next((p for p in b["prompts"] if p["n"] == item["prompt"]), None)
+
+
+def prompt_refs(prompt: dict) -> list[str]:
+    """A prompt's own reference images (singles can have several; batch prompts have at most one)."""
+    return prompt.get("refs") or ([prompt["ref"]] if prompt.get("ref") else [])
 
 
 def pinned_refs(b: dict) -> list[str]:
@@ -164,6 +181,40 @@ class Store:
         self.batches[b["id"]] = b
         self.save(b)
         return b
+
+    def singles_today(self) -> dict | None:
+        today = dt.date.today().isoformat()
+        return next((b for b in self.batches.values() if b.get("kind") == "singles" and b.get("day") == today), None)
+
+    def add_single(self, *, text: str, settings: dict, refs: list[bytes], count: int, seed: int | None) -> tuple[dict, list[dict]]:
+        """Add one single image (or a few variants of it) to today's Singles batch, creating it if needed."""
+        now = dt.datetime.now()
+        b = self.singles_today()
+        if b is None or not self.folder(b).exists():
+            name = self._unique(now.strftime("%Y-%m-%d_Singles"))
+            (self.root / name / "refs").mkdir(parents=True)
+            b = {"id": uuid.uuid4().hex[:12], "name": name, "created": now.isoformat(timespec="seconds"),
+                 "order": time.time(), "paused": False, "kind": "singles", "day": now.date().isoformat(),
+                 "settings": {**{k: settings.get(k) for k in SINGLE_SETTINGS}, "per_prompt": 1, "seed": None},
+                 "batch_refs": [], "prompts": [], "items": []}
+            self.batches[b["id"]] = b
+        n = max((p["n"] for p in b["prompts"]), default=0) + 1
+        ref_paths = []
+        for k, data in enumerate(refs[:MAX_PINNED], 1):
+            ref_paths.append(f"refs/{n:03d}_{k}.png")
+            (self.folder(b) / ref_paths[-1]).write_bytes(to_png(data))
+        if seed is None:
+            seed = random.randint(0, 2**31 - 1 - len(VARIANTS))
+        b["prompts"].append({"n": n, "text": text, "ref": None, "refs": ref_paths, "seed": seed,
+                             "per_prompt": count, "created": now.isoformat(timespec="seconds"),
+                             "settings": {k: settings[k] for k in SINGLE_SETTINGS if settings.get(k) is not None}})
+        items = [{"id": f"{n}{VARIANTS[v]}", "prompt": n, "file": f"{n:03d}_{VARIANTS[v]}.png", "seed": seed + v,
+                  "status": "queued", "error": None, "duration": None, "started": None, "finished": None}
+                 for v in range(count)]
+        b["items"].extend(items)
+        b["paused"] = False
+        self.save(b)
+        return b, items
 
     def rename(self, b: dict, new_name: str) -> None:
         new_name = clean_name(new_name)

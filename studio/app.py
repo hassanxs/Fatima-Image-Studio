@@ -30,7 +30,8 @@ from .downloads import Downloads
 from .loras import Loras
 from .mcp_server import build as build_mcp
 from .references import References, pick_folder
-from .store import MAX_PINNED, PROMPT_OVERRIDES, Store, batch_status, pinned_refs, slug, to_png
+from .store import (MAX_PINNED, PROMPT_OVERRIDES, Store, batch_status, pinned_refs, prompt_of, prompt_refs,
+                    settings_for, slug, to_png)
 from .worker import Worker
 
 log = logging.getLogger("studio")
@@ -105,7 +106,8 @@ def create_app(cfg: dict) -> FastAPI:
             "remaining": remaining, "avg_seconds": round(avg, 2) if avg else None,
             "eta_seconds": round(avg * remaining) if avg and remaining else None,
             "prompt_count": len(b["prompts"]), "first_prompt": b["prompts"][0]["text"],
-            "has_refs": bool(pinned_refs(b)) or any(p["ref"] for p in b["prompts"]),
+            "has_refs": bool(pinned_refs(b)) or any(prompt_refs(p) for p in b["prompts"]),
+            "kind": b.get("kind", "batch"),
             "edits": sum(1 for it in items if it.get("kind")),
             "mixed": any(k in p for p in b["prompts"] for k in PROMPT_OVERRIDES),
             "upscaled": sum((it.get("upscale") or {}).get("status") == "done" for it in items),
@@ -222,6 +224,34 @@ def create_app(cfg: dict) -> FastAPI:
         worker.notify()
         return summarize(b, full=True)
 
+    @app.post("/api/singles")
+    async def create_single(request: Request):
+        """One image (or a few variants) from one prompt, added to today's Singles batch and made next."""
+        form = await request.form()
+        try:
+            spec = json.loads(form["spec"])
+        except (KeyError, ValueError):
+            raise HTTPException(400, "Missing spec")
+        text = str(spec.get("text") or "").strip()
+        if not text:
+            raise HTTPException(400, "Describe the image first.")
+        if len(text) > 10000:
+            raise HTTPException(400, "That prompt is too long.")
+        raw = dict(spec.get("settings") or {})
+        raw["per_prompt"] = raw.get("count", 1)
+        settings = validate_settings(raw)
+        refs = [data for k in range(MAX_PINNED) if (data := await read_upload(form.get(f"ref_{k}")))]
+        if refs and not config.MODELS[settings["model"]]["refs"]:
+            raise HTTPException(400, f"{config.MODELS[settings['model']]['label']} doesn't use reference images. "
+                                     "Remove them, or pick a FLUX.2 model.")
+        try:
+            b, items = store.add_single(text=text, settings=settings, refs=refs,
+                                        count=settings["per_prompt"], seed=settings["seed"])
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        worker.notify()
+        return {"batch": summarize(b), "items": [it["id"] for it in items]}
+
     def validate_settings(s: dict) -> dict:
         installed = config.installed_models(cfg)
         model = s.get("model") or cfg["default_model"]
@@ -312,6 +342,8 @@ def create_app(cfg: dict) -> FastAPI:
         elif action == "retry":
             worker.retry(b)
         elif action == "rerun":
+            if b.get("kind") == "singles":
+                raise HTTPException(400, "Single images can't be re-run as a batch. Regenerate them one by one in the viewer.")
             nb = store.rerun(b)
             worker.notify()
             return summarize(nb)
@@ -404,7 +436,7 @@ def create_app(cfg: dict) -> FastAPI:
             raise HTTPException(400, "Unknown edit type")
         if kind in ("edit", "inpaint") and not prompt:
             raise HTTPException(400, "Describe the change you want.")
-        if kind == "edit" and not config.MODELS[b["settings"]["model"]]["refs"]:
+        if kind == "edit" and not config.MODELS[settings_for(b, prompt_of(b, source))["model"]]["refs"]:
             raise HTTPException(400, "This batch's model can't edit by instruction — use Vary or Inpaint.")
         try:
             strength = min(0.95, max(0.05, float(form.get("strength") or 0.3)))
@@ -477,9 +509,15 @@ def create_app(cfg: dict) -> FastAPI:
 
     # ---- LoRA library ---------------------------------------------------------
 
+    def queued_settings():
+        """Settings of every image still waiting or running."""
+        for b in store.batches.values():
+            for it in b["items"]:
+                if it["status"] in ("queued", "running"):  # paused batches count: they'll resume
+                    yield settings_for(b, prompt_of(b, it))
+
     def lora_in_use(lora_id: str) -> bool:
-        return any(any(l["id"] == lora_id for l in b["settings"].get("loras") or [])
-                   and batch_status(b) in ("running", "queued", "paused") for b in store.batches.values())
+        return any(any(l["id"] == lora_id for l in s.get("loras") or []) for s in queued_settings())
 
     @app.get("/api/loras")
     def list_loras():
@@ -598,8 +636,7 @@ def create_app(cfg: dict) -> FastAPI:
             raise HTTPException(404, "Unknown model")
         if key == cfg["default_model"]:
             raise HTTPException(409, "That's the default model. Pick another default in Settings first.")
-        if any(b["settings"]["model"] == key and batch_status(b) in ("running", "queued", "paused")
-               for b in store.batches.values()):
+        if any(s["model"] == key for s in queued_settings()):
             raise HTTPException(409, "A batch in the queue uses this model. Finish or cancel it first.")
         if engine.model == key:
             await engine.stop()
