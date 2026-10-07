@@ -57,6 +57,18 @@ These are not part of the installer. The app downloads them from their publisher
 | Qwen-Image 2.1 (GGUF) | Qwen Research License (non-commercial) | https://huggingface.co/Qwen/Qwen-Image-2.1, GGUF by abenzerps |
 | Qwen3-VL 8B text encoder + vision (GGUF) | Apache 2.0 | https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF |
 | Qwen-Image 2.1 VAE | Qwen Research License | https://huggingface.co/Comfy-Org/Qwen-Image-2.1 |
+| Qwen-Image, Qwen-Image-Edit 2511 (GGUF) + VAE | Apache 2.0 | https://huggingface.co/Qwen, GGUF by QuantStack and unsloth |
+| Qwen2.5-VL 7B text encoder + vision (GGUF) | Apache 2.0 | https://huggingface.co/Qwen, GGUF by mradermacher |
+| Z-Image (GGUF) | Apache 2.0 | https://huggingface.co/Tongyi-MAI/Z-Image, GGUF by unsloth |
+| Chroma1-HD (GGUF) | Apache 2.0 | https://huggingface.co/lodestones, GGUF by silveroxides |
+| FLUX.1 schnell (GGUF) | Apache 2.0 | https://huggingface.co/black-forest-labs, GGUF by leejet |
+| FLUX.1 Kontext dev (GGUF) | FLUX.1 [dev] Non-Commercial License | https://huggingface.co/black-forest-labs, GGUF by QuantStack |
+| FLUX.2 dev (GGUF) | FLUX Non-Commercial License | https://huggingface.co/black-forest-labs, GGUF by city96 |
+| CLIP-L and T5-XXL text encoders | Apache 2.0 / MIT | https://huggingface.co/comfyanonymous/flux_text_encoders |
+| Mistral Small 3.2 24B text encoder (GGUF) | Apache 2.0 | https://huggingface.co/mistralai, GGUF by unsloth |
+| SDXL 1.0 | CreativeML OpenRAIL++-M | https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0 |
+| SDXL VAE fp16 fix | MIT | https://huggingface.co/madebyollin/sdxl-vae-fp16-fix |
+| Stable Diffusion 1.5 | CreativeML OpenRAIL-M | https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5 |
 | FLUX.2 VAE, Z-Image VAE | per the model's licence | https://huggingface.co/Comfy-Org |
 | LoRAs you import | each LoRA's own licence | shown on its Hugging Face page |
 

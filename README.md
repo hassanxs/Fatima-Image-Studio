@@ -111,6 +111,11 @@ the project folder.
   - FLUX.2 klein 9B — **non-commercial licence**: not for monetized videos or client work.
   - Qwen-Image 2.1 — excellent readable text and detailed scenes, reference images and editing, transparent PNGs;
     **non-commercial licence** (Qwen Research License). Slow on 8 GB GPUs (about 2–3 minutes per 1024² image).
+  - Also available (each shows its licence, size and how well it fits your GPU on the Setup page):
+    Qwen-Image and Qwen-Image-Edit 2511 (Apache 2.0; text in images, editing and multi-reference characters;
+    16 GB+ GPUs), Z-Image base and Chroma1-HD (Apache 2.0), FLUX.1 schnell (Apache 2.0; small GPUs),
+    SDXL 1.0 and Stable Diffusion 1.5 (OpenRAIL; low-end PCs, huge LoRA ecosystem), and — non-commercial —
+    FLUX.1 Kontext dev (editing) and FLUX.2 dev (24 GB GPUs).
 - **LoRAs** — *Models* page → *LoRA library*: paste a Hugging Face link (or upload a `.safetensors`). The app picks
   the right file, detects which base model it's for from its layer shapes, reads the trigger words and licence
   from the model card, and rewrites FLUX.2 layer names the engine would otherwise skip (without that, only

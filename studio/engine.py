@@ -100,10 +100,7 @@ class Engine:
             self._fail("No engine installed. Open the Setup page to download one.")
         self.port = _free_port()
         args = [str(exe), "--listen-ip", "127.0.0.1", "--listen-port", str(self.port),
-                "--diffusion-model", str(models_dir / m["diffusion"]),
-                "--llm", str(models_dir / m["llm"]),
-                "--vae", str(models_dir / m["vae"]),
-                *(["--llm_vision", str(models_dir / m["vision"])] if m.get("vision") else []),
+                *[a for k, flag in config.FILE_ARGS.items() if m.get(k) for a in (flag, str(models_dir / m[k]))],
                 "--steps", str(m["steps"]), *self._flags(m)]
         (models_dir / "upscalers").mkdir(parents=True, exist_ok=True)
         args += ["--hires-upscalers-dir", str(models_dir / "upscalers")]
@@ -215,7 +212,7 @@ class Engine:
                 "mask_image": base64.b64encode(mask).decode() if mask else None,
                 "strength": strength,
                 "lora": [{"path": l["file"], "multiplier": l["strength"]} for l in loras],
-                "sample_params": {"sample_method": "euler", "sample_steps": steps,
+                "sample_params": {"sample_method": config.MODELS[model].get("sampler", "euler"), "sample_steps": steps,
                                   "guidance": {"txt_cfg": config.MODELS[model].get("cfg", 1.0)}},
                 "output_format": "png",
             }

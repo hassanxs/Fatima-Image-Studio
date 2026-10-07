@@ -93,6 +93,23 @@ FILES = {
     "Qwen3VL-8B-Instruct-Q4_K_M.gguf": (HF + "Qwen/Qwen3-VL-8B-Instruct-GGUF/resolve/main/Qwen3VL-8B-Instruct-Q4_K_M.gguf", 5027784800),
     "mmproj-Qwen3VL-8B-Instruct-F16.gguf": (HF + "Qwen/Qwen3-VL-8B-Instruct-GGUF/resolve/main/mmproj-Qwen3VL-8B-Instruct-F16.gguf", 1159029824),
     "qwen_image_2.1_vae_bf16.safetensors": (HF + "Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors", 675509688),
+    # More models: Qwen-Image / Qwen-Image-Edit (+ Qwen2.5-VL 7B), Z-Image, Chroma, FLUX.1, SDXL, SD 1.5, FLUX.2-dev
+    "Qwen_Image-Q4_K_M.gguf": (HF + "QuantStack/Qwen-Image-GGUF/resolve/main/Qwen_Image-Q4_K_M.gguf", 13065746976),
+    "qwen-image-edit-2511-Q4_K_M.gguf": (HF + "unsloth/Qwen-Image-Edit-2511-GGUF/resolve/main/qwen-image-edit-2511-Q4_K_M.gguf", 13244758624),
+    "Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf": (HF + "mradermacher/Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf", 4683072512),
+    "Qwen2.5-VL-7B-Instruct.mmproj-f16.gguf": (HF + "mradermacher/Qwen2.5-VL-7B-Instruct-GGUF/resolve/main/Qwen2.5-VL-7B-Instruct.mmproj-f16.gguf", 1354162912),
+    "qwen_image_vae.safetensors": (HF + "Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors", 253806246),
+    "z-image-Q4_K_M.gguf": (HF + "unsloth/Z-Image-GGUF/resolve/main/z-image-Q4_K_M.gguf", 5066995776),
+    "Chroma1-HD-Q4_0.gguf": (HF + "silveroxides/Chroma-GGUF/resolve/main/Chroma1-HD/Chroma1-HD-Q4_0.gguf", 5432053920),
+    "clip_l.safetensors": (HF + "comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors", 246144152),
+    "t5xxl_fp8_e4m3fn.safetensors": (HF + "comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors", 4893934904),
+    "flux1-schnell-q4_0.gguf": (HF + "leejet/FLUX.1-schnell-gguf/resolve/main/flux1-schnell-q4_0.gguf", 6884606880),
+    "flux1-kontext-dev-Q4_K_M.gguf": (HF + "QuantStack/FLUX.1-Kontext-dev-GGUF/resolve/main/flux1-kontext-dev-Q4_K_M.gguf", 6931817760),
+    "sd_xl_base_1.0.safetensors": (HF + "stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors", 6938078334),
+    "sdxl_vae.safetensors": (HF + "madebyollin/sdxl-vae-fp16-fix/resolve/main/sdxl_vae.safetensors", 334641162),
+    "v1-5-pruned-emaonly.safetensors": (HF + "stable-diffusion-v1-5/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors", 4265146304),
+    "flux2-dev-Q4_K_S.gguf": (HF + "city96/FLUX.2-dev-gguf/resolve/main/flux2-dev-Q4_K_S.gguf", 19299128288),
+    "Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf": (HF + "unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF/resolve/main/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf", 14333922848),
 }
 
 _FLUX2 = ["--diffusion-fa", "--sage-attn", "--vae-conv-direct", "--cfg-scale", "1.0", "--sampling-method", "euler"]
@@ -127,12 +144,70 @@ MODELS = {
                "license": "Qwen Research License — non-commercial",
                "about": "Best at readable text in images and detailed scenes; can also make transparent PNGs. "
                         "Slow on 8 GB GPUs (about 2–3 minutes per 1024² image)."},
+    "qwenimage": {"label": "Qwen-Image · Q4", "short": "Qwen-Image · text & posters", "api_id": "qwen-image-q4",
+                  "family": "qwen-image", "diffusion": "Qwen_Image-Q4_K_M.gguf", "llm": "Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf",
+                  "vae": "qwen_image_vae.safetensors", "steps": 20, "cfg": 2.5, "speed": 18,
+                  "flags": ["--diffusion-fa", "--flow-shift", "3"], "refs": False,
+                  "license": "Apache 2.0 — commercial use OK",
+                  "about": "20B model with excellent text in images (posters, signs, infographics) and detailed scenes. "
+                           "Best on 16 GB+ GPUs; slow on 8 GB."},
+    "qwenedit": {"label": "Qwen-Image-Edit 2511 · Q4", "short": "Qwen-Image-Edit · edits & characters", "api_id": "qwen-image-edit-2511-q4",
+                 "family": "qwen-image", "diffusion": "qwen-image-edit-2511-Q4_K_M.gguf", "llm": "Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf",
+                 "vision": "Qwen2.5-VL-7B-Instruct.mmproj-f16.gguf", "vae": "qwen_image_vae.safetensors",
+                 "steps": 20, "cfg": 2.5, "speed": 20, "flags": ["--diffusion-fa", "--flow-shift", "3"], "refs": True,
+                 "license": "Apache 2.0 — commercial use OK",
+                 "about": "Edits by instruction and combines up to several reference images: keep a character consistent "
+                          "across scenes. Best on 16 GB+ GPUs; slow on 8 GB."},
+    "zimagebase": {"label": "Z-Image · Q4", "short": "Z-Image (base) · flexible", "api_id": "z-image-q4", "family": "z-image",
+                   "diffusion": "z-image-Q4_K_M.gguf", "llm": "Qwen3-4B-Q4_K_M.gguf", "vae": "ae.safetensors",
+                   "steps": 28, "cfg": 5.0, "speed": 9, "flags": ["--diffusion-fa"], "refs": False,
+                   "license": "Apache 2.0 — commercial use OK",
+                   "about": "The full Z-Image that Turbo is distilled from: slower, more varied and better at following "
+                            "long prompts. Shares its text encoder with Z-Image Turbo."},
+    "chroma": {"label": "Chroma1-HD · Q4", "short": "Chroma1-HD · any style", "api_id": "chroma1-hd-q4", "family": "chroma",
+               "diffusion": "Chroma1-HD-Q4_0.gguf", "t5xxl": "t5xxl_fp8_e4m3fn.safetensors", "vae": "ae.safetensors",
+               "steps": 26, "cfg": 4.0, "speed": 10,
+               "flags": ["--diffusion-fa", "--model-args", "chroma_use_dit_mask=false"], "refs": False,
+               "license": "Apache 2.0 — commercial use OK",
+               "about": "Community model built on FLUX.1 schnell: wide range of styles, photo and art, with few content "
+                        "restrictions. Uses CFG, so it's slower per image."},
+    "schnell": {"label": "FLUX.1 schnell · Q4", "short": "FLUX.1 schnell · fast, small GPUs", "api_id": "flux1-schnell-q4",
+                "family": "flux1", "diffusion": "flux1-schnell-q4_0.gguf", "clip_l": "clip_l.safetensors",
+                "t5xxl": "t5xxl_fp8_e4m3fn.safetensors", "vae": "ae.safetensors", "steps": 4, "speed": 2,
+                "flags": ["--diffusion-fa"], "refs": False, "license": "Apache 2.0 — commercial use OK",
+                "about": "The original fast FLUX (4 steps). Runs on 6 GB GPUs; a solid all-rounder."},
+    "kontext": {"label": "FLUX.1 Kontext dev · Q4", "short": "FLUX.1 Kontext · image editing", "api_id": "flux1-kontext-dev-q4",
+                "family": "flux1", "diffusion": "flux1-kontext-dev-Q4_K_M.gguf", "clip_l": "clip_l.safetensors",
+                "t5xxl": "t5xxl_fp8_e4m3fn.safetensors", "vae": "ae.safetensors", "steps": 20, "speed": 8,
+                "flags": ["--diffusion-fa"], "refs": True, "noncommercial": True,
+                "license": "FLUX Non-Commercial — not for monetized or client work",
+                "about": "Edits an image by instruction (\"make it night\", \"change the text\") on 6–8 GB GPUs."},
+    "sdxl": {"label": "SDXL 1.0", "short": "SDXL · huge LoRA ecosystem", "api_id": "sdxl-base-1.0", "family": "sdxl",
+             "checkpoint": "sd_xl_base_1.0.safetensors", "vae": "sdxl_vae.safetensors", "steps": 25, "cfg": 7.0,
+             "sampler": "euler_a", "speed": 3, "flags": [], "refs": False, "license": "CreativeML OpenRAIL++ — commercial use OK",
+             "about": "The classic open model with thousands of community LoRAs. Works on 6 GB GPUs; best at 1024 px."},
+    "sd15": {"label": "Stable Diffusion 1.5", "short": "SD 1.5 · low-end PCs", "api_id": "sd-1.5", "family": "sd15",
+             "checkpoint": "v1-5-pruned-emaonly.safetensors", "steps": 25, "cfg": 7.0, "sampler": "euler_a", "speed": 0.8,
+             "flags": [], "refs": False, "license": "CreativeML OpenRAIL-M — commercial use OK",
+             "about": "Small and old, but runs almost anywhere, even on 4 GB GPUs or the CPU. Use 512 × 512 or 512 × 768."},
+    "flux2dev": {"label": "FLUX.2 dev · Q4", "short": "FLUX.2 dev · top quality, big GPUs", "api_id": "flux2-dev-q4",
+                 "family": "flux2-dev", "diffusion": "flux2-dev-Q4_K_S.gguf", "llm": "Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf",
+                 "vae": "flux2-vae.safetensors", "steps": 28, "speed": 40, "flags": _FLUX2, "refs": True, "noncommercial": True,
+                 "license": "FLUX Non-Commercial — not for monetized or client work",
+                 "about": "The 32B FLUX.2 with a 24B text encoder: top quality and reference images. Needs a 24 GB GPU "
+                          "and 64 GB of RAM; far too big for 8–16 GB."},
 }
 
 
 # LoRAs only work on the base model they were trained for; models sharing a family can share LoRAs.
 FAMILIES = {"flux2-klein-4b": "FLUX.2 klein 4B", "flux2-klein-9b": "FLUX.2 klein 9B", "z-image": "Z-Image",
-            "qwen-image-2.1": "Qwen-Image 2.1"}
+            "qwen-image-2.1": "Qwen-Image 2.1", "qwen-image": "Qwen-Image", "chroma": "Chroma", "flux1": "FLUX.1",
+            "sdxl": "SDXL", "sd15": "SD 1.5", "flux2-dev": "FLUX.2 dev"}
+# Each model's files and the engine argument that loads them. "checkpoint" is a single all-in-one file
+# (SDXL, SD 1.5); the others are separate parts. Only the keys a model has are used.
+FILE_ARGS = {"checkpoint": "--model", "diffusion": "--diffusion-model", "llm": "--llm", "vision": "--llm_vision",
+             "clip_l": "--clip_l", "clip_g": "--clip_g", "t5xxl": "--t5xxl", "vae": "--vae"}
+TEXT_PARTS = ("llm", "clip_l", "clip_g", "t5xxl")
 MAX_LORAS = 3  # per batch
 
 
@@ -147,7 +222,7 @@ def steps_for(cfg: dict, model: str) -> int:
 
 def model_files(key: str) -> list[str]:
     m = MODELS[key]
-    return [m["diffusion"], m["llm"], m["vae"], *([m["vision"]] if m.get("vision") else [])]
+    return [m[k] for k in FILE_ARGS if m.get(k)]
 
 
 # Real-ESRGAN upscalers (BSD-3-Clause) in models/upscalers; the file stem is the engine's upscaler name.
